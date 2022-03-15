@@ -1,33 +1,33 @@
 use crate::errors::{PattiCsvError, Result, SplitError};
 
-use super::csv_value::{CsvValue, SplitValue};
+use super::value::{SplitValue, Value};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct CsvColumn {
-    pub t_info: CsvValue, // We use the enum variants default value as our type info
+pub struct Column {
+    pub type_info: Value, // We use the enum variants default value as our type info
     pub name: String,     // the column header
     pub idx: usize,       // columns are zero-indexed for now!
-    pub data: Vec<Option<CsvValue>>,
+    pub data: Vec<Option<Value>>,
 }
 
-impl CsvColumn {
-    pub fn new(t_info: CsvValue, name: String, idx: usize) -> Self {
-        CsvColumn {
-            t_info,
+impl Column {
+    pub fn new(t_info: Value, name: String, idx: usize) -> Self {
+        Column {
+            type_info: t_info,
             name,
             idx,
             data: Vec::new(),
         }
     }
 
-    pub fn new_filled_with(value: CsvValue, name: String, idx: usize, capacity: usize) -> Self {
-        let mut data: Vec<Option<CsvValue>> = Vec::with_capacity(capacity);
+    pub fn new_filled_with(value: Value, name: String, idx: usize, capacity: usize) -> Self {
+        let mut data: Vec<Option<Value>> = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             data.push(Some(value.clone()));
         }
 
-        CsvColumn {
-            t_info: value,
+        Column {
+            type_info: value,
             name,
             idx,
             data,
@@ -35,30 +35,30 @@ impl CsvColumn {
     }
 
     pub fn new_filled_with_opt(
-        value: &Option<CsvValue>,
-        t_info: CsvValue,
+        value: &Option<Value>,
+        t_info: Value,
         name: String,
         idx: usize,
         capacity: usize,
     ) -> Self {
-        let mut data: Vec<Option<CsvValue>> = Vec::with_capacity(capacity);
+        let mut data: Vec<Option<Value>> = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             data.push(value.clone());
         }
 
-        CsvColumn {
-            t_info,
+        Column {
+            type_info: t_info,
             name,
             idx,
             data,
         }
     }
 
-    pub fn push(&mut self, v: Option<CsvValue>) {
+    pub fn push(&mut self, v: Option<Value>) {
         self.data.push(v);
     }
 
-    pub fn push_data(&mut self, v: CsvValue) {
+    pub fn push_data(&mut self, v: Value) {
         self.push(Some(v));
     }
 
@@ -73,13 +73,13 @@ impl CsvColumn {
     pub fn split_by<S>(
         &self,
         splitter: &S,
-        dst_left: &mut CsvColumn,
-        dst_right: &mut CsvColumn,
+        dst_left: &mut Column,
+        dst_right: &mut Column,
     ) -> Result<()>
     where
         S: SplitValue,
     {
-        fn push_or_err(imf_val_opt: Option<CsvValue>, dst: &mut CsvColumn) -> Result<()> {
+        fn push_or_err(imf_val_opt: Option<Value>, dst: &mut Column) -> Result<()> {
             match imf_val_opt {
                 None => {
                     dst.data.push(None);
@@ -88,15 +88,15 @@ impl CsvColumn {
                 Some(ref imf_val) => {
                     match imf_val {
                         // we have a String variant as src type try converting it to the target type
-                        CsvValue::String(s) => {
+                        Value::String(s) => {
                             let transf_val =
-                                CsvValue::from_string_with_templ(s.clone(), &dst.t_info)?;
+                                Value::from_string_with_templ(s.clone(), &dst.type_info)?;
                             dst.data.push(transf_val);
                             Ok(())
                         }
                         // we have the same enum variant in src and dst, we can push, as is
                         _ if std::mem::discriminant(imf_val)
-                            == std::mem::discriminant(&dst.t_info) =>
+                            == std::mem::discriminant(&dst.type_info) =>
                         {
                             dst.data.push(imf_val_opt.clone());
                             Ok(())
@@ -105,7 +105,7 @@ impl CsvColumn {
                         _ => Err(PattiCsvError::Split(SplitError::from(
                             format!(
                                 "type mismatch. {:?} cannot be put into left column of type {:?}",
-                                imf_val, &dst.t_info
+                                imf_val, &dst.type_info
                             ),
                             imf_val_opt.clone(),
                             None,
@@ -129,9 +129,8 @@ mod tests {
 
     #[test]
     fn test_new_filled_with() {
-        let col =
-            CsvColumn::new_filled_with(CsvValue::Float64(1.12), String::from("col#1"), 0, 100);
+        let col = Column::new_filled_with(Value::Float64(1.12), String::from("col#1"), 0, 100);
         assert!(col.data.len() == 100);
-        assert!(col.data.iter().all(|x| x == &Some(CsvValue::Float64(1.12))));
+        assert!(col.data.iter().all(|x| x == &Some(Value::Float64(1.12))));
     }
 }

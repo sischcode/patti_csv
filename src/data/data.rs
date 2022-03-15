@@ -1,10 +1,10 @@
-use super::{csv_column::CsvColumn, csv_value::SplitValue};
+use super::{column::Column, value::SplitValue};
 use crate::errors::{PattiCsvError, Result, SplitError};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CsvData {
     // + additional metadata?
-    pub columns: Vec<CsvColumn>,
+    pub columns: Vec<Column>,
 }
 
 impl CsvData {
@@ -22,19 +22,19 @@ impl CsvData {
         };
     }
 
-    pub fn get_col(&self, idx: usize) -> Option<&CsvColumn> {
+    pub fn get_col(&self, idx: usize) -> Option<&Column> {
         self.columns.iter().find(|&c| c.idx == idx)
     }
 
-    pub fn get_col_mut(&mut self, idx: usize) -> Option<&mut CsvColumn> {
+    pub fn get_col_mut(&mut self, idx: usize) -> Option<&mut Column> {
         self.columns.iter_mut().find(|c| c.idx == idx)
     }
 
-    pub fn add_col(&mut self, col: CsvColumn) {
+    pub fn add_col(&mut self, col: Column) {
         self.columns.push(col);
     }
 
-    pub fn del_col(&mut self, idx: usize) -> Result<CsvColumn> {
+    pub fn del_col(&mut self, idx: usize) -> Result<Column> {
         let mut del = 0;
         let mut found = false;
         for col in self.columns.iter().enumerate() {
@@ -56,8 +56,8 @@ impl CsvData {
         &mut self,
         idx: usize,
         splitter: &S,
-        mut dst_left: CsvColumn,
-        mut dst_right: CsvColumn,
+        mut dst_left: Column,
+        mut dst_right: Column,
         delete_src_col: bool,
     ) -> Result<()>
     where
@@ -83,14 +83,14 @@ impl CsvData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::csv_column::CsvColumn;
-    use crate::data::csv_value::CsvValue;
+    use crate::data::column::Column;
+    use crate::data::value::Value;
 
     #[test]
     fn imf_add_col() {
         let mut imf = CsvData::new();
-        imf.add_col(CsvColumn::new(
-            CsvValue::string_default(),
+        imf.add_col(Column::new(
+            Value::string_default(),
             "column_1".to_string(),
             0,
         ));
@@ -100,8 +100,8 @@ mod tests {
     #[test]
     fn imf_get_col() {
         let mut imf = CsvData::new();
-        imf.add_col(CsvColumn::new(
-            CsvValue::string_default(),
+        imf.add_col(Column::new(
+            Value::string_default(),
             "column_1".to_string(),
             0,
         ));
@@ -112,8 +112,8 @@ mod tests {
     #[test]
     fn imf_get_col_mut() {
         let mut imf = CsvData::new();
-        imf.add_col(CsvColumn::new(
-            CsvValue::string_default(),
+        imf.add_col(Column::new(
+            Value::string_default(),
             "column_1".to_string(),
             0,
         ));
@@ -124,8 +124,8 @@ mod tests {
     #[test]
     fn imf_del_col_ok() {
         let mut imf = CsvData::new();
-        imf.add_col(CsvColumn::new(
-            CsvValue::string_default(),
+        imf.add_col(Column::new(
+            Value::string_default(),
             "column_1".to_string(),
             0,
         ));
@@ -136,8 +136,8 @@ mod tests {
     #[test]
     fn imf_del_col_err() {
         let mut imf = CsvData::new();
-        imf.add_col(CsvColumn::new(
-            CsvValue::string_default(),
+        imf.add_col(Column::new(
+            Value::string_default(),
             "column_1".to_string(),
             0,
         ));

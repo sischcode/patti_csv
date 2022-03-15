@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use thiserror::Error;
 
-use crate::data::csv_value::CsvValue;
+use crate::data::value::Value;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum PattiCsvError {
@@ -50,7 +50,7 @@ pub enum ConversionError {
 #[error("error: {msg:?}; problem value: {src_val:?}; detail: {detail:?}")]
 pub struct SplitError {
     msg: String,
-    src_val: Option<CsvValue>,
+    src_val: Option<Value>,
     detail: Option<String>,
 }
 impl SplitError {
@@ -61,7 +61,7 @@ impl SplitError {
             detail: None,
         }
     }
-    pub fn from(msg: String, src_val: Option<CsvValue>, detail: Option<String>) -> Self {
+    pub fn from(msg: String, src_val: Option<Value>, detail: Option<String>) -> Self {
         Self {
             msg,
             src_val,
