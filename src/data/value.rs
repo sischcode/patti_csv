@@ -158,11 +158,13 @@ impl Value {
     }
 
     /// Since we cannot really use the FromStr trait here...
+    // TODO v as string, or as Option<String>?
     pub fn from_string_with_templ(v: String, templ_type: &Value) -> Result<Option<Value>> {
         if v == "".to_string() {
             return Ok(None);
         }
         match templ_type {
+            Value::Null => Ok(Some(Value::Null)), // TODO do we really need this, or is None ok!?
             Value::String(_) => Ok(Some(Value::String(v))),
             Value::Int8(_) => {
                 let temp = v.parse::<i8>().map_err(|_| {
@@ -172,6 +174,15 @@ impl Value {
                     })
                 })?;
                 Ok(Some(Value::Int8(temp)))
+            }
+            Value::Int32(_) => {
+                let temp = v.parse::<i32>().map_err(|_| {
+                    PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
+                        src_value: v.clone(),
+                        target_type: "Int32",
+                    })
+                })?;
+                Ok(Some(Value::Int32(temp)))
             }
             Value::Int64(_) => {
                 let temp = v.parse::<i64>().map_err(|_| {
@@ -190,6 +201,15 @@ impl Value {
                     })
                 })?;
                 Ok(Some(Value::Int128(temp)))
+            }
+            Value::Float32(_) => {
+                let temp = v.parse::<f32>().map_err(|_| {
+                    PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
+                        src_value: v.clone(),
+                        target_type: "Float32",
+                    })
+                })?;
+                Ok(Some(Value::Float32(temp)))
             }
             Value::Float64(_) => {
                 let temp = v.parse::<f64>().map_err(|_| {
