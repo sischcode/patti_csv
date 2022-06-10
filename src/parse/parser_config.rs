@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::{skip_take_lines::SkipTakeLines, transform_sanitize_token::*};
 use crate::data::value::Value;
 
@@ -20,8 +18,8 @@ pub struct TransformSanitizeTokens {
     pub transitizers: Vec<Box<dyn TransformSanitizeToken>>,
 }
 
-pub struct ParserConfig {
-    pub parser_opts: ParserOpts,
-    pub sanitize_columns: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
-    pub type_columns: Vec<TypeColumnEntry>,
-}
+// pub struct ParserConfig {
+//     pub parser_opts: ParserOpts,
+//     pub sanitize_columns: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+//     pub type_columns: Vec<TypeColumnEntry>,
+// }

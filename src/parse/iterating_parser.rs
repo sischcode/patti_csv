@@ -1,121 +1,139 @@
-// // use log::trace;
-// use std::io::Read;
+use std::collections::HashMap;
+// use log::trace;
+use std::io::Read;
 
-// use crate::data::imf::IMF;
-// use crate::data::imf_column::Column;
-// use crate::data::imf_value::Value;
-// use crate::errors::{PattiCsvError, Result};
-// use crate::parse::dsv::line_tokenizer::DelimitedLineTokenizer;
+use crate::data::data::CsvData;
+use crate::data::column::Column;
+use crate::data::value::Value;
+use crate::errors::{PattiCsvError, Result};
+use crate::parse::line_tokenizer::DelimitedLineTokenizer;
 
-// use super::{
-//     line_tokenizer::{DelimitedLineTokenizerIterator, DelimitedLineTokenizerStats},
-//     parser_common::{build_imf_skeleton, build_imf_skeleton_w_header, sanitize_tokenizer_iter_res},
-//     parser_config::ParserConfig,
-// };
+use super::line_tokenizer::DelimitedLineTokenizerStats;
+use super::parser_common::{build_csv_data_skeleton_w_header, build_csv_data_skeleton, sanitize_tokenizer_iter_res};
+use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
+use super::skip_take_lines::SkipTakeLines;
 
-// pub struct IteratingParser<'rd, 'cfg, R>
-// where
-//     R: Read,
-// {
-//     pub config: &'cfg ParserConfig,
-//     pub dlt_iter: DelimitedLineTokenizerIterator<'rd, 'cfg, R>,
-// }
 
-// impl<'rd, 'cfg, R: Read> IteratingParser<'rd, 'cfg, R> {
-//     pub fn new(config: &'cfg ParserConfig, input: &'rd mut R) -> Self {
-//         Self {
-//             config,
-//             dlt_iter: DelimitedLineTokenizer::custom(
-//                 &config.parser_opts.skip_take_lines,
-//                 input,
-//                 config.parser_opts.separator_char,
-//                 config.parser_opts.enclosure_char,
-//             )
-//             .into_iter(),
-//         }
-//     }
-// }
+pub struct PattiCsvParser<'rd, R>
+where
+    R: Read,
+{
+    separator_char: char,
+    enclosure_char: Option<char>,
+    first_line_is_header: bool,
+    column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_typings: Vec<TypeColumnEntry>,
+    dlt_iter: DelimitedLineTokenizer<'rd, R>,
+}
 
-// pub struct DsvIterParserIterator<'rd, 'cfg, R: Read> {
-//     parser: IteratingParser<'rd, 'cfg, R>,
-//     col_layout_template: Option<IMF>,
-// }
+impl<'rd, R: Read> PattiCsvParser<'rd, R> {
+    pub fn new(
+        input_raw_data: &'rd mut R,
+        separator_char: char,
+        enclosure_char: Option<char>,
+        first_line_is_header: bool,
+        mut skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
+        column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+        column_typings: Vec<TypeColumnEntry>
+    ) -> Self {
+        Self {
+            separator_char,
+            enclosure_char,
+            first_line_is_header,
+            column_transitizers,
+            column_typings,
+            dlt_iter: DelimitedLineTokenizer::new(
+                input_raw_data,
+                separator_char,
+                enclosure_char,
+                std::mem::take(&mut skip_take_lines_fns)
+            ),
+        }
+    }
+}
 
-// impl<'rd, 'cfg, R: Read> Iterator for DsvIterParserIterator<'rd, 'cfg, R> {
-//     type Item = Result<(usize, IMF, DelimitedLineTokenizerStats)>;
+pub struct PattiCsvParserIterator<'rd, R: Read> {
+    patti_csv_parser: PattiCsvParser<'rd, R>,
+    col_layout_template: Option<CsvData>,
+}
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let (dlt_iter_line_num, dlt_iter_res) = self.parser.dlt_iter.next()?; // shortcuts when iteration is over!
-//         let (dlt_iter_res_vec, dlt_iter_res_stats) = match dlt_iter_res {
-//             Ok((v, s)) => (v, s),
-//             Err(e) => return Some(Err(e)),
-//         };
+impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
+    type Item = Result<(usize, CsvData, DelimitedLineTokenizerStats)>;
 
-//         let mut imf_ret = IMF::new();
-//         match dlt_iter_res_stats.is_at_header_line() {
-//             true => {
-//                 // Special case for first line. We create a skeleton with or without supplied headers
-//                 if self.parser.config.parser_opts.first_line_is_header {
-//                     self.col_layout_template = match build_imf_skeleton_w_header(
-//                         &dlt_iter_res_vec,
-//                         &self.parser.config.type_columns,
-//                     ) {
-//                         Ok(v) => Some(v),
-//                         Err(e) => return Some(Err(e)),
-//                     }
-//                 } else {
-//                     self.col_layout_template =
-//                         Some(build_imf_skeleton(&self.parser.config.type_columns));
-//                 }
+    fn next(&mut self) -> Option<Self::Item> {
+        // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
+        // We early "return" a None through the ?, then we check for an error inside the Some(Result)
+        let (dlt_iter_res_vec, dlt_iter_res_stats) = match self.patti_csv_parser.dlt_iter.next()? {
+            Err(e) => return Some(Err(e)),
+            Ok(dlt_iter_res) => dlt_iter_res,
+        };
 
-//                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, v)| {
-//                     let mut new_col = Column::new(Value::string_default(), v.clone(), i);
-//                     new_col.push_data(v.into());
-//                     imf_ret.add_col(new_col);
-//                 });
-//             }
-//             false => {
-//                 imf_ret = match self.col_layout_template.clone() {
-//                     Some(v) => v,
-//                     None => {
-//                         return Some(Err(PattiCsvError::Generic {
-//                             msg: "Error! No structure template available, but expected one.".into(),
-//                         }))
-//                     }
-//                 };
+        let mut csv_data = CsvData::new();
+        match dlt_iter_res_stats.is_at_header_line() {
+            true => {
+                // Special case for first line. We create a skeleton with or without supplied headers
+                if self.patti_csv_parser.first_line_is_header {
+                    self.col_layout_template = match build_csv_data_skeleton_w_header(
+                        &dlt_iter_res_vec,
+                        &self.patti_csv_parser.column_typings,
+                    ) {
+                        Ok(v) => Some(v),
+                        Err(e) => return Some(Err(e)),
+                    }
+                } else {
+                    self.col_layout_template =
+                        Some(build_csv_data_skeleton(&self.patti_csv_parser.column_typings));
+                }
 
-//                 let sanitized_tokens = match sanitize_tokenizer_iter_res(
-//                     self.parser.config,
-//                     (dlt_iter_line_num, dlt_iter_res_vec),
-//                 ) {
-//                     Ok(v) => v,
-//                     Err(e) => return Some(Err(e)),
-//                 };
+                dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, v)| {
+                    let mut new_col = Column::new(Value::string_default(), v.clone(), i);
+                    new_col.push(Some(v.into()));
+                    csv_data.add_col(new_col);
+                });
+            }
+            false => {
+                csv_data = match self.col_layout_template.clone() {
+                    Some(v) => v,
+                    None => {
+                        return Some(Err(PattiCsvError::Generic {
+                            msg: "Error! No structure template available, but expected one.".into(),
+                        }))
+                    }
+                };
 
-//                 let mut col_iter = imf_ret.columns.iter_mut().enumerate();
-//                 while let Some((i, col)) = col_iter.next() {
-//                     let curr_token = sanitized_tokens.get(i).unwrap();
-//                     col.push(
-//                         match Value::from_string_with_templ(curr_token.clone(), &col.imf_type) {
-//                             Ok(v) => v,
-//                             Err(e) => return Some(Err(e)),
-//                         },
-//                     );
-//                 }
-//             }
-//         }
-//         Some(Ok((0, imf_ret, dlt_iter_res_stats)))
-//     }
-// }
+                let sanitized_tokens = match sanitize_tokenizer_iter_res(
+                    dlt_iter_res_stats.curr_line_num,
+                    dlt_iter_res_vec,
+                    &self.patti_csv_parser.column_transitizers,
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e)),
+                };
 
-// impl<'rd, 'cfg, R: Read> IntoIterator for IteratingParser<'rd, 'cfg, R> {
-//     type Item = Result<(usize, IMF, DelimitedLineTokenizerStats)>;
-//     type IntoIter = DsvIterParserIterator<'rd, 'cfg, R>;
+                let mut col_iter = csv_data.columns.iter_mut().enumerate();
+                while let Some((i, col)) = col_iter.next() {
+                    let curr_token = sanitized_tokens.get(i).unwrap();
+                    col.push(
+                        match Value::from_string_with_templ(curr_token.clone(), &col.type_info) {
+                            Ok(v) => v,
+                            Err(e) => return Some(Err(e)),
+                        },
+                    );
+                }
+            }
+        }
+        Some(Ok((0, csv_data, dlt_iter_res_stats)))
+    }
+}
 
-//     fn into_iter(self) -> Self::IntoIter {
-//         DsvIterParserIterator {
-//             parser: self,
-//             col_layout_template: None,
-//         }
-//     }
-// }
+impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
+    type Item = Result<(usize, CsvData, DelimitedLineTokenizerStats)>;
+    type IntoIter = PattiCsvParserIterator<'rd, R>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PattiCsvParserIterator {
+            patti_csv_parser: self,
+            col_layout_template: None,
+        }
+    }
+}
