@@ -20,22 +20,8 @@ impl Column {
         }
     }
 
-    pub fn new_filled_with(value: Value, name: String, idx: usize, capacity: usize) -> Self {
-        let mut data: Vec<Option<Value>> = Vec::with_capacity(capacity);
-        for _ in 0..capacity {
-            data.push(Some(value.clone()));
-        }
-
-        Column {
-            type_info: value,
-            name,
-            idx,
-            data,
-        }
-    }
-
-    pub fn new_filled_with_opt(
-        value: &Option<Value>,
+    pub fn new_filled_with(
+        value: Option<Value>,
         t_info: Value,
         name: String,
         idx: usize,
@@ -52,6 +38,11 @@ impl Column {
             idx,
             data,
         }
+    }
+
+    pub fn new_filled_with_value(value: Value, name: String, idx: usize, capacity: usize) -> Self {
+        let t_info = value.clone();
+        Column::new_filled_with(Some(value), t_info, name, idx, capacity)
     }
 
     /// Appends data to the column.
@@ -121,9 +112,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_filled_with() {
-        let col = Column::new_filled_with(Value::Float64(1.12), String::from("col#1"), 0, 100);
+    fn test_new_filled_with_value() {
+        let col =
+            Column::new_filled_with_value(Value::Float64(1.12), String::from("col#1"), 0, 100);
         assert!(col.data.len() == 100);
         assert!(col.data.iter().all(|x| x == &Some(Value::Float64(1.12))));
+    }
+
+    #[test]
+    fn test_new_filled_with_and_value() {
+        let col = Column::new_filled_with(
+            Some(Value::Float64(1.12)),
+            Value::float64_default(),
+            String::from("col#1"),
+            0,
+            100,
+        );
+        assert!(col.data.len() == 100);
+        assert!(col.data.iter().all(|x| x == &Some(Value::Float64(1.12))));
+    }
+
+    #[test]
+    fn test_new_filled_with_and_none() {
+        let col = Column::new_filled_with(
+            None,
+            Value::float64_default(),
+            String::from("col#1"),
+            0,
+            100,
+        );
+        assert!(col.data.len() == 100);
+        assert!(col.data.iter().all(|x| x == &None));
     }
 }

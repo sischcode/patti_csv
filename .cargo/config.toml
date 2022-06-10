@@ -1,0 +1,8 @@
+# see: https://doc.rust-lang.org/cargo/reference/config.html
+[profile.release]
+# 2 or 3 for speed; 's' or 'z' for size optimization.
+opt-level = 3       # Optimize for speed
+lto = true          # Enable Link Time Optimization | lto = "fat"
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+#debug = true        # only for flamegraph
+incremental = true  # Incremental compilation

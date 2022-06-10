@@ -3,7 +3,7 @@ name = "patti_csv"
 version = "0.1.0"
 authors = ["Joerg Sischka <sischcode@gmx.net>"]
 edition = "2021"
-rust-version = "1.59"
+rust-version = "1.61"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,15 +19,3 @@ rust_decimal_macros = "1.22"
 [dependencies.log4rs]
 version = "1.0"
 features = ["json_encoder"]
-
-[profile.release]
-# 2 or 3 for speed; 's' or 'z' for size optimization.
-opt-level = 3       # Optimize for speed
-lto = true          # Enable Link Time Optimization
-codegen-units = 1   # Reduce number of codegen units to increase optimizations.
-#debug = true        # only for flamegraph
-
-[profile.release.profile]
-incremental = true
-debug = true
-lto = "fat"

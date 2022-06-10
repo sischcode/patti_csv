@@ -5,7 +5,6 @@ use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
-    Null,
     String(String),
     Int8(i8),
     Int32(i32),
@@ -93,6 +92,17 @@ macro_rules! type_defaults {
     };
 }
 
+macro_rules! is_type {
+    ($fn_name:ident, $enum_type:ident) => {
+        pub fn $fn_name(&self) -> bool {
+            match self {
+                Value::$enum_type(_) => true,
+                _ => false,
+            }
+        }
+    };
+}
+
 impl Value {
     pub fn date_default() -> Self {
         Value::Date(String::from(""))
@@ -157,82 +167,110 @@ impl Value {
         Value::Decimal(Decimal::from_i64(v).unwrap()) // I can't think of a case where a f64 cannot be represented by a decimal
     }
 
-    /// Since we cannot really use the FromStr trait here...
-    // TODO v as string, or as Option<String>?
-    pub fn from_string_with_templ(v: String, templ_type: &Value) -> Result<Option<Value>> {
-        if v == "".to_string() {
+    is_type!(is_string, String);
+    is_type!(is_int8, Int8);
+    is_type!(is_int32, Int32);
+    is_type!(is_int64, Int64);
+    is_type!(is_int128, Int128);
+    is_type!(is_float32, Float32);
+    is_type!(is_float64, Float64);
+    is_type!(is_bool, Bool);
+    is_type!(is_decimal, Decimal);
+    is_type!(is_date, Date);
+    is_type!(is_naive_date, NaiveDate);
+
+    pub fn get_default_of_self(&self) -> Value {
+        match self {
+            Value::String(_) => Value::string_default(),
+            Value::Int8(_) => Value::int8_default(),
+            Value::Int32(_) => Value::int32_default(),
+            Value::Int64(_) => Value::int64_default(),
+            Value::Int128(_) => Value::int128_default(),
+            Value::Float32(_) => Value::float32_default(),
+            Value::Float64(_) => Value::float64_default(),
+            Value::Bool(_) => Value::bool_default(),
+            Value::Decimal(_) => Value::decimal_default(),
+            Value::Date(_) => Value::date_default(),
+            Value::NaiveDate(_) => Value::naive_date_default(),
+        }
+    }
+
+    /// NOTE: We decided agains Option<String> here as the type of the value since the intention is to create a typed version of a stringy-input we read from some CSV.
+    ///       In that case, when a CSV column contains a "" as an entry, e.g. like this: `a,,c` or this `"a","","c"`, where the middle column would translate to empty / "",
+    ///       we map it to a None internally, representing the absence of data.
+    pub fn from_string_with_templ(value: String, templ_type: &Value) -> Result<Option<Value>> {
+        if value == "".to_string() {
             return Ok(None);
         }
         match templ_type {
-            Value::Null => Ok(Some(Value::Null)), // TODO do we really need this, or is None ok!?
-            Value::String(_) => Ok(Some(Value::String(v))),
+            Value::String(_) => Ok(Some(Value::String(value))), // even a string value of "" will be a real value, since it's not explicitly None (...i.e. coming from a "null")
             Value::Int8(_) => {
-                let temp = v.parse::<i8>().map_err(|_| {
+                let temp = value.parse::<i8>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Int8",
                     })
                 })?;
                 Ok(Some(Value::Int8(temp)))
             }
             Value::Int32(_) => {
-                let temp = v.parse::<i32>().map_err(|_| {
+                let temp = value.parse::<i32>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Int32",
                     })
                 })?;
                 Ok(Some(Value::Int32(temp)))
             }
             Value::Int64(_) => {
-                let temp = v.parse::<i64>().map_err(|_| {
+                let temp = value.parse::<i64>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Int64",
                     })
                 })?;
                 Ok(Some(Value::Int64(temp)))
             }
             Value::Int128(_) => {
-                let temp = v.parse::<i128>().map_err(|_| {
+                let temp = value.parse::<i128>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Int128",
                     })
                 })?;
                 Ok(Some(Value::Int128(temp)))
             }
             Value::Float32(_) => {
-                let temp = v.parse::<f32>().map_err(|_| {
+                let temp = value.parse::<f32>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Float32",
                     })
                 })?;
                 Ok(Some(Value::Float32(temp)))
             }
             Value::Float64(_) => {
-                let temp = v.parse::<f64>().map_err(|_| {
+                let temp = value.parse::<f64>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Float64",
                     })
                 })?;
                 Ok(Some(Value::Float64(temp)))
             }
             Value::Bool(_) => {
-                let temp = v.parse::<bool>().map_err(|_| {
+                let temp = value.parse::<bool>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Bool",
                     })
                 })?;
                 Ok(Some(Value::Bool(temp)))
             }
             Value::Decimal(_) => {
-                let temp = v.parse::<Decimal>().map_err(|_| {
+                let temp = value.parse::<Decimal>().map_err(|_| {
                     PattiCsvError::Conversion(ConversionError::ValueFromStringFailed {
-                        src_value: v.clone(),
+                        src_value: value.clone(),
                         target_type: "Decimal",
                     })
                 })?;
@@ -244,6 +282,7 @@ impl Value {
     }
 }
 
+// TODO: not sure if we should rename this, or make this a method on value, etc.
 pub trait SplitValue {
     fn split(&self, src: &Option<Value>) -> Result<(Option<Value>, Option<Value>)>;
     fn split_none(&self) -> bool;
