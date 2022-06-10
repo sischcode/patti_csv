@@ -7,8 +7,8 @@ mod errors;
 // #[allow(dead_code)]
 // mod json_config;
 
-// #[allow(dead_code)]
-// mod parse;
+#[allow(dead_code)]
+mod parse;
 
 // #[allow(dead_code)]
 // mod transform_enrich;

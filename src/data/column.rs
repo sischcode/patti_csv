@@ -54,16 +54,9 @@ impl Column {
         }
     }
 
+    /// Appends data to the column.
     pub fn push(&mut self, v: Option<Value>) {
         self.data.push(v);
-    }
-
-    pub fn push_data(&mut self, v: Value) {
-        self.push(Some(v));
-    }
-
-    pub fn push_none(&mut self) {
-        self.push(None);
     }
 
     pub fn set_idx(&mut self, new_idx: usize) {

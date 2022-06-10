@@ -1,4 +1,4 @@
-pub trait SkipTakeFileLines {
+pub trait SkipTakeLines {
     fn skip(&self, line_num: Option<usize>, line_content: Option<&str>) -> bool;
 }
 
@@ -6,7 +6,7 @@ pub trait SkipTakeFileLines {
 pub struct SkipLinesFromStart {
     pub skip_num_lines: usize,
 }
-impl SkipTakeFileLines for SkipLinesFromStart {
+impl SkipTakeLines for SkipLinesFromStart {
     fn skip(&self, line_num: Option<usize>, _line_content: Option<&str>) -> bool {
         match line_num {
             Some(ln) => ln <= self.skip_num_lines,
@@ -20,7 +20,7 @@ pub struct SkipLinesFromEnd {
     pub skip_num_lines: usize,
     pub lines_total: usize,
 }
-impl SkipTakeFileLines for SkipLinesFromEnd {
+impl SkipTakeLines for SkipLinesFromEnd {
     fn skip(&self, line_num: Option<usize>, _line_content: Option<&str>) -> bool {
         match line_num {
             Some(ln) => ln > self.lines_total - self.skip_num_lines,
@@ -33,7 +33,7 @@ impl SkipTakeFileLines for SkipLinesFromEnd {
 pub struct SkipLinesStartingWith {
     pub starts_with: String,
 }
-impl SkipTakeFileLines for SkipLinesStartingWith {
+impl SkipTakeLines for SkipLinesStartingWith {
     fn skip(&self, _line_num: Option<usize>, line_content: Option<&str>) -> bool {
         match line_content {
             Some(c) => c.starts_with(&self.starts_with),
@@ -46,7 +46,7 @@ impl SkipTakeFileLines for SkipLinesStartingWith {
 pub struct TakeLinesStartingWith {
     pub starts_with: String,
 }
-impl SkipTakeFileLines for TakeLinesStartingWith {
+impl SkipTakeLines for TakeLinesStartingWith {
     fn skip(&self, _line_num: Option<usize>, line_content: Option<&str>) -> bool {
         match line_content {
             Some(c) => !c.starts_with(&self.starts_with),
@@ -57,7 +57,7 @@ impl SkipTakeFileLines for TakeLinesStartingWith {
 
 #[derive(Debug)]
 pub struct SkipEmptyLines {}
-impl SkipTakeFileLines for SkipEmptyLines {
+impl SkipTakeLines for SkipEmptyLines {
     fn skip(&self, _line_num: Option<usize>, line_content: Option<&str>) -> bool {
         match line_content {
             Some(c) => c.eq("\n") || c.eq("\r\n"), // nothing there besides newline
@@ -70,7 +70,7 @@ impl SkipTakeFileLines for SkipEmptyLines {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::dsv::skip_take_file_lines::*;
+    use crate::parse::skip_take_lines::*;
 
     fn test_data_01() -> Vec<&'static str> {
         vec![

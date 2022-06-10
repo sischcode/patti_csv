@@ -12,34 +12,11 @@ enum State {
     QuoteInQuotedField, // we need this to do proper escape checking of the enclosure character
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct DelimitedLineTokenizerStats {
-    pub curr_line_num: usize, // needed for internal state while iterating
-    pub lines_parsed: usize,  // needed for internal state while iterating
-    pub skipped_lines: Vec<usize>,
-    pub bytes_read: usize,
-}
-
-impl DelimitedLineTokenizerStats {
-    pub fn new() -> Self {
-        Self {
-            curr_line_num: 0,
-            lines_parsed: 0,
-            skipped_lines: Vec::<usize>::new(),
-            bytes_read: 0,
-        }
-    }
-    pub fn is_at_header_line(&self) -> bool {
-        self.lines_parsed == 1
-    }
-}
-
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     buf_raw_data: BufReader<&'rd mut R>,
     delim_char: char,
     encl_char: Option<char>,
     skip_take_lines: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
-    pub stats: DelimitedLineTokenizerStats,
 }
 
 /// Mostly written with the csv rfc (https://tools.ietf.org/html/rfc4180) in mind, and compliant with that,
@@ -54,11 +31,10 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         parser_opt_lines: Option<Vec<Box<dyn SkipTakeLines>>>,
     ) -> Self {
         DelimitedLineTokenizer {
-            buf_raw_data: BufReader::new(raw_data),
             delim_char: delim,
             encl_char: enclc,
             skip_take_lines: parser_opt_lines,
-            stats: DelimitedLineTokenizerStats::new(),
+            buf_raw_data: BufReader::new(raw_data),
         }
     }
     pub fn csv(raw_data: &'rd mut R, skip_take_lines: Option<Vec<Box<dyn SkipTakeLines>>>) -> Self {
@@ -68,11 +44,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         DelimitedLineTokenizer::new(raw_data, '\t', None, skip_take_lines)
     }
 
-    pub fn get_stats(&self) -> &DelimitedLineTokenizerStats {
-        &self.stats
-    }
-
-    fn skip_line_by_skiptake_sanitizer(&self, line_counter: usize, line: &String) -> bool {
+    fn skip_file_line_by_file_sanitizer(&self, line_counter: usize, line: &String) -> bool {
         // If we have filters, we apply them and see if we need to skip this line.
         if let Some(ref skip_take_lines) = self.skip_take_lines {
             skip_take_lines
@@ -170,8 +142,41 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
     }
 }
 
-impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
-    type Item = Result<(Vec<String>, DelimitedLineTokenizerStats)>;
+#[derive(Debug, Clone, PartialEq)]
+pub struct DelimitedLineTokenizerStats {
+    pub curr_line_num: usize, // needed for internal state while iterating
+    pub lines_parsed: usize,  // needed for internal state while iterating
+    pub skipped_lines: Vec<usize>,
+    pub bytes_read: usize,
+}
+
+impl DelimitedLineTokenizerStats {
+    pub fn new() -> Self {
+        Self {
+            curr_line_num: 0,
+            lines_parsed: 0,
+            skipped_lines: Vec::<usize>::new(),
+            bytes_read: 0,
+        }
+    }
+    pub fn is_at_header_line(&self) -> bool {
+        self.lines_parsed == 1
+    }
+}
+
+pub struct DelimitedLineTokenizerIterator<'rd, R: Read> {
+    dlt: DelimitedLineTokenizer<'rd, R>,
+    stats: DelimitedLineTokenizerStats,
+}
+
+impl<'rd, R: Read> DelimitedLineTokenizerIterator<'rd, R> {
+    pub fn get_stats(&self) -> &DelimitedLineTokenizerStats {
+        &self.stats
+    }
+}
+
+impl<'rd, R: Read> Iterator for DelimitedLineTokenizerIterator<'rd, R> {
+    type Item = (usize, Result<(Vec<String>, DelimitedLineTokenizerStats)>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut line = String::new();
@@ -180,18 +185,23 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
         while skip_this_line {
             line = String::new();
             self.stats.curr_line_num += 1;
-            let bytes_read = match self.buf_raw_data.read_line(&mut line) {
+            let bytes_read = match self.dlt.buf_raw_data.read_line(&mut line) {
                 Ok(num_bytes) => match num_bytes {
                     _ if num_bytes == 0 as usize => return None, // returns "normal", i.e. end of "stream". ('return' always returns from a funtion!)
                     _ => Some(num_bytes),
                 },
                 Err(e) => {
                     let msg = format!("error reading line {}. {}", self.stats.curr_line_num, e);
-                    return Some(Err(PattiCsvError::Generic { msg }));
+                    return Some((
+                        self.stats.curr_line_num,
+                        Err(PattiCsvError::Generic { msg }),
+                    ));
                 }
             };
             self.stats.bytes_read += bytes_read.unwrap(); // unwrap is OK here, we checked every other path
-            skip_this_line = self.skip_line_by_skiptake_sanitizer(self.stats.curr_line_num, &line);
+            skip_this_line = self
+                .dlt
+                .skip_file_line_by_file_sanitizer(self.stats.curr_line_num, &line);
             if skip_this_line {
                 self.stats.skipped_lines.push(self.stats.curr_line_num);
             }
@@ -199,9 +209,24 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
         self.stats.lines_parsed += 1;
         trace!("line: {:?}; stats: {:?}", &line, &self.stats);
 
-        match self.tokenize(self.stats.curr_line_num, &line.trim_end()) {
-            Ok(v) => Some(Ok((v, self.stats.clone()))),
-            Err(e) => Some(Err(e)),
+        match self
+            .dlt
+            .tokenize(self.stats.curr_line_num, &line.trim_end())
+        {
+            Ok(v) => Some((self.stats.curr_line_num, Ok((v, self.stats.clone())))),
+            Err(e) => Some((self.stats.curr_line_num, Err(e))),
+        }
+    }
+}
+
+impl<'rd, R: Read> IntoIterator for DelimitedLineTokenizer<'rd, R> {
+    type Item = (usize, Result<(Vec<String>, DelimitedLineTokenizerStats)>);
+    type IntoIter = DelimitedLineTokenizerIterator<'rd, R>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        DelimitedLineTokenizerIterator {
+            dlt: self,
+            stats: DelimitedLineTokenizerStats::new(),
         }
     }
 }
@@ -213,7 +238,8 @@ mod tests {
     #[test]
     fn empty() {
         let mut test_data_cursor = std::io::Cursor::new("");
-        let mut dlt_iter = DelimitedLineTokenizer::csv(&mut test_data_cursor, None).into_iter();
+        let dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None);
+        let mut dlt_iter = dlt.into_iter();
         let res = dlt_iter.next();
 
         assert_eq!(res, None);
@@ -221,8 +247,9 @@ mod tests {
 
     fn test_it(inp: &str, exp: Vec<&str>) {
         let mut test_data_cursor = std::io::Cursor::new(inp);
-        let mut dlt_iter = DelimitedLineTokenizer::csv(&mut test_data_cursor, None).into_iter();
-        let res = dlt_iter.next().unwrap().unwrap().0;
+        let dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None);
+        let mut dlt_iter = dlt.into_iter();
+        let res = dlt_iter.next().unwrap().1.unwrap().0;
         assert_eq!(res, exp);
     }
 
@@ -342,8 +369,9 @@ mod tests {
     #[test]
     fn enclosing_with_enclosing_char_not_properly_escaped() {
         let mut test_data_cursor = std::io::Cursor::new("foo,\"bar\"\",baz");
-        let mut dlt_iter = DelimitedLineTokenizer::csv(&mut test_data_cursor, None).into_iter();
-        let res = dlt_iter.next().unwrap();
+        let dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None);
+        let mut dlt_iter = dlt.into_iter();
+        let (_line_num, res) = dlt_iter.next().unwrap();
         assert_eq!(
             Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
                 line: 1,
@@ -356,8 +384,9 @@ mod tests {
     #[test]
     fn enclosing_char_in_unenclosed_field() {
         let mut test_data_cursor = std::io::Cursor::new("f\"oo,bar");
-        let mut dlt_iter = DelimitedLineTokenizer::csv(&mut test_data_cursor, None).into_iter();
-        let res = dlt_iter.next().unwrap();
+        let dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None);
+        let mut dlt_iter = dlt.into_iter();
+        let (_line_num, res) = dlt_iter.next().unwrap();
         assert_eq!(
             Err(PattiCsvError::Tokenize(TokenizerError::IllegalEnclChar {
                 line: 1,
@@ -370,8 +399,9 @@ mod tests {
     #[test]
     fn tab_separated_simple() {
         let mut test_data_cursor = std::io::Cursor::new("foo\tb\"a'r\tb|az");
-        let mut dlt_iter = DelimitedLineTokenizer::tab(&mut test_data_cursor, None).into_iter();
-        let res = dlt_iter.next().unwrap();
+        let dlt = DelimitedLineTokenizer::tab(&mut test_data_cursor, None);
+        let mut dlt_iter = dlt.into_iter();
+        let (_line_num, res) = dlt_iter.next().unwrap();
         assert_eq!(res.unwrap().0, vec!["foo", "b\"a'r", "b|az"]);
     }
 
@@ -379,41 +409,42 @@ mod tests {
     /// doesn't really work correctly, or does it?
     fn tab_separated_simple_enclosed() {
         let mut test_data_cursor = std::io::Cursor::new("foo\t\"b\tar\"\tbaz");
-        let mut dlt_iter =
-            DelimitedLineTokenizer::new(&mut test_data_cursor, '\t', Some('"'), None).into_iter();
-        let res = dlt_iter.next().unwrap();
+        let dlt = DelimitedLineTokenizer::new(&mut test_data_cursor, '\t', Some('"'), None);
+        let mut dlt_iter = dlt.into_iter();
+        let (_line_num, res) = dlt_iter.next().unwrap();
         assert_eq!(res.unwrap().0, vec!["foo", "b\tar", "baz"]);
     }
 
     #[test]
     fn pipe_separated_simple_enclosed() {
         let mut test_data_cursor = std::io::Cursor::new("foo|\"b|ar\"|baz");
-        let mut dlt_iter =
-            DelimitedLineTokenizer::new(&mut test_data_cursor, '|', Some('"'), None).into_iter();
-        let res = dlt_iter.next().unwrap();
+        let dlt = DelimitedLineTokenizer::new(&mut test_data_cursor, '|', Some('"'), None);
+        let mut dlt_iter = dlt.into_iter();
+        let (_line_num, res) = dlt_iter.next().unwrap();
         assert_eq!(res.unwrap().0, vec!["foo", "b|ar", "baz"]);
     }
 
     #[test]
     fn pipe_separated_simple_enclosed2() {
         let mut test_data_cursor = std::io::Cursor::new("foo|'b|ar'|baz");
-        let mut dlt_iter =
-            DelimitedLineTokenizer::new(&mut test_data_cursor, '|', Some('\''), None).into_iter();
-        let res = dlt_iter.next().unwrap();
+        let dlt = DelimitedLineTokenizer::new(&mut test_data_cursor, '|', Some('\''), None);
+        let mut dlt_iter = dlt.into_iter();
+        let (_line_num, res) = dlt_iter.next().unwrap();
         assert_eq!(res.unwrap().0, vec!["foo", "b|ar", "baz"]);
     }
 
     #[test]
     fn multiple_lines_test_simple() {
         let mut test_data_cursor = std::io::Cursor::new("a,b,c\n1,2,3");
-        let mut dlt_iter = DelimitedLineTokenizer::csv(&mut test_data_cursor, None).into_iter();
+        let dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None);
+        let mut dlt_iter = dlt.into_iter();
 
-        let (res, stats) = dlt_iter.next().unwrap().unwrap();
-        assert_eq!(res, vec!["a", "b", "c"]);
-        assert_eq!(stats.curr_line_num, 1);
+        let (line_num, res) = dlt_iter.next().unwrap();
+        assert_eq!(res.unwrap().0, vec!["a", "b", "c"]);
+        assert_eq!(line_num, 1);
 
-        let (res, stats) = dlt_iter.next().unwrap().unwrap();
-        assert_eq!(res, vec!["1", "2", "3"]);
-        assert_eq!(stats.curr_line_num, 2);
+        let (line_num, res) = dlt_iter.next().unwrap();
+        assert_eq!(res.unwrap().0, vec!["1", "2", "3"]);
+        assert_eq!(line_num, 2);
     }
 }

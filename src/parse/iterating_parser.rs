@@ -8,25 +8,25 @@ use crate::errors::{PattiCsvError, Result};
 use crate::parse::dsv::line_tokenizer::DelimitedLineTokenizer;
 
 use super::{
-    config::DsvParserConfig,
     line_tokenizer::{DelimitedLineTokenizerIterator, DelimitedLineTokenizerStats},
     parser_common::{build_imf_skeleton, build_imf_skeleton_w_header, sanitize_tokenizer_iter_res},
+    parser_config::ParserConfig,
 };
 
-pub struct DsvIterParser<'rd, 'cfg, R>
+pub struct IteratingParser<'rd, 'cfg, R>
 where
     R: Read,
 {
-    pub config: &'cfg DsvParserConfig,
+    pub config: &'cfg ParserConfig,
     pub dlt_iter: DelimitedLineTokenizerIterator<'rd, 'cfg, R>,
 }
 
-impl<'rd, 'cfg, R: Read> DsvIterParser<'rd, 'cfg, R> {
-    pub fn new(config: &'cfg DsvParserConfig, input: &'rd mut R) -> Self {
+impl<'rd, 'cfg, R: Read> IteratingParser<'rd, 'cfg, R> {
+    pub fn new(config: &'cfg ParserConfig, input: &'rd mut R) -> Self {
         Self {
             config,
             dlt_iter: DelimitedLineTokenizer::custom(
-                &config.parser_opts.lines,
+                &config.parser_opts.skip_take_lines,
                 input,
                 config.parser_opts.separator_char,
                 config.parser_opts.enclosure_char,
@@ -37,7 +37,7 @@ impl<'rd, 'cfg, R: Read> DsvIterParser<'rd, 'cfg, R> {
 }
 
 pub struct DsvIterParserIterator<'rd, 'cfg, R: Read> {
-    parser: DsvIterParser<'rd, 'cfg, R>,
+    parser: IteratingParser<'rd, 'cfg, R>,
     col_layout_template: Option<IMF>,
 }
 
@@ -108,7 +108,7 @@ impl<'rd, 'cfg, R: Read> Iterator for DsvIterParserIterator<'rd, 'cfg, R> {
     }
 }
 
-impl<'rd, 'cfg, R: Read> IntoIterator for DsvIterParser<'rd, 'cfg, R> {
+impl<'rd, 'cfg, R: Read> IntoIterator for IteratingParser<'rd, 'cfg, R> {
     type Item = Result<(usize, IMF, DelimitedLineTokenizerStats)>;
     type IntoIter = DsvIterParserIterator<'rd, 'cfg, R>;
 

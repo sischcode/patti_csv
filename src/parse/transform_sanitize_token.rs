@@ -99,7 +99,7 @@ impl TransformSanitizeToken for RegexTake {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::dsv::transform_sanitize_token::*;
+    use crate::parse::transform_sanitize_token::*;
 
     #[test]
     fn test_regex_take() {
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_regex_take_err() {
         assert_eq!(
-            Err(ImfError::Sanitize(SanitizeError::minim(
+            Err(PattiCsvError::Sanitize(SanitizeError::minim(
                 "No captures, but we need exactly one.".into(),
                 "1000 (CHF)".into(),
             ))),
@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_regex_take_err2() {
         assert_eq!(
-            Err(ImfError::Sanitize(SanitizeError::minim(
+            Err(PattiCsvError::Sanitize(SanitizeError::minim(
                 "No capture group#1.".into(),
                 "1000 (CHF)".into(),
             ))),
