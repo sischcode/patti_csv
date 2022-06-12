@@ -36,9 +36,9 @@ impl DelimitedLineTokenizerStats {
 
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     buf_raw_data: BufReader<&'rd mut R>,
-    delim_char: char,
-    encl_char: Option<char>,
-    skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
+    pub delim_char: char,
+    pub encl_char: Option<char>,
+    pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
     pub stats: DelimitedLineTokenizerStats,
 }
 
