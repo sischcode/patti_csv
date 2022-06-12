@@ -205,4 +205,16 @@ mod tests {
         let mut iter = parser.into_iter();
         println!("{:?}", iter.next());
     }
+
+    #[test]
+    fn test_builder_defaults() {
+        let mut test_data_cursor = std::io::Cursor::new("foo,\"bar\",baz");
+        let parser = PattiCsvParserBuilder::new().build(&mut test_data_cursor);
+            
+        assert_eq!(parser.first_line_is_header, true);
+        assert_eq!(parser.column_transitizers.is_none(), true);
+        assert_eq!(parser.column_typings, vec![]);
+        assert_eq!(parser.dlt_iter.delim_char, ',');
+        assert_eq!(parser.dlt_iter.encl_char, Some('"'));
+    }
 }
