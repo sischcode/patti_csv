@@ -58,7 +58,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             first_line_is_header: true,
             skip_take_lines_fns: None,
             column_transitizers: None,
-            mandatory_column_typings: true,
+            mandatory_column_typings: false,
             column_typings: Vec::new(),
             phantom: PhantomData::default(),
         }
@@ -136,7 +136,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         // Special case for the first line, which might be a header line and must be treated differently.
         if dlt_iter_res_stats.is_at_first_line_to_parse() {
             // If we don't have type info for the columns, default to String for everything, as this is a common
-            // usecase, when typings are not actually needed, e.g. when we just want to skip certain things, etc.
+            // usecase when typings are not actually needed, e.g. when we just want to skip certain things, etc.
             if self.patti_csv_parser.column_typings.len() == 0 {
                 for _ in 0..dlt_iter_res_vec.len() {
                     self.patti_csv_parser
@@ -154,9 +154,9 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     Err(e) => return Some(Err(e)),
                 };
 
-                // Special case for the header line, where our datatype is always/hardcoded string.
+                // Special case for the header line, where our datatype is always, hardcoded, a string.
                 // Also, we need to use the correct header names that may come from the typings, or
-                // the headerline, in this order!
+                // the headerline, or are defaulted to indices, in this order!
                 let mut csv_data: CsvData = CsvData::new();
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
@@ -170,6 +170,8 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         .unwrap() // We must have this column
                         .name;
 
+                    // TODO: do we want transitization on the headers!?
+
                     let mut new_col =
                         Column::new(Value::string_default(), header_and_val.clone(), i);
                     new_col.push(Some(header_and_val.clone().into()));
@@ -178,7 +180,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 return Some(Ok((csv_data, dlt_iter_res_stats)));
             } else {
                 // In this case, the first line is actual data, meaning, we first
-                // need to build the structure, without parsing/setting the headers
+                // need to build the structure, without parsing and setting the headers
                 self.col_layout_template = Some(build_csv_data_skeleton(
                     &self.patti_csv_parser.column_typings,
                 ));
@@ -233,7 +235,7 @@ impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::transform_sanitize_token::{ToLowercase, TrimAll};
+    use crate::parse::{transform_sanitize_token::{ToLowercase, TrimAll}, skip_take_lines::{SkipLinesStartingWith, SkipLinesFromEnd}};
 
     use super::*;
 
@@ -271,7 +273,6 @@ mod tests {
     fn test_builder_defaults() {
         let mut test_data_cursor = std::io::Cursor::new("");
         let parser = PattiCsvParserBuilder::new()
-            .mandatory_column_typings(false) // TODO: let this error!
             .build(&mut test_data_cursor)
             .unwrap();
 
@@ -322,7 +323,6 @@ mod tests {
 
         let parser = PattiCsvParserBuilder::new()
             .first_line_is_header(true)
-            .mandatory_column_typings(false)
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
             .unwrap();
@@ -333,5 +333,29 @@ mod tests {
 
         println!("{:?}", headers);
         println!("{:?}", line_1);
+    }
+
+    #[test]
+    fn test_parser_03() {
+        let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
+
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        transitizers.insert(None, vec![Box::new(ToLowercase)]);
+        transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
+
+        let parser = PattiCsvParserBuilder::new()
+            .first_line_is_header(true)
+            .mandatory_column_typings(false)
+            .skip_take_lines_fns(vec![
+                Box::new(SkipLinesStartingWith {starts_with: String::from("#")}),
+                Box::new(SkipLinesFromEnd {skip_num_lines: 1, lines_total: 5}),
+            ])
+            .column_transitizers(transitizers)
+            .build(&mut test_data_cursor)
+            .unwrap();
+
+        let mut iter = parser.into_iter();
+        println!("{:?}", iter.next()); // headers
+        println!("{:?}", iter.next()); // line 1
     }
 }
