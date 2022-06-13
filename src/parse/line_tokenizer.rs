@@ -29,7 +29,7 @@ impl DelimitedLineTokenizerStats {
             bytes_read: 0,
         }
     }
-    pub fn is_at_header_line(&self) -> bool {
+    pub fn is_at_first_line_to_parse(&self) -> bool {
         self.lines_parsed == 1
     }
 }

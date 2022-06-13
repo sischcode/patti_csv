@@ -1,4 +1,4 @@
-use super::{transform_sanitize_token::*};
+use super::transform_sanitize_token::*;
 use crate::data::value::Value;
 
 #[derive(Debug, PartialEq)]
@@ -7,6 +7,13 @@ pub struct TypeColumnEntry {
     pub target_type: Value,
 }
 
-pub struct TransformSanitizeTokens {
-    pub transitizers: Vec<Box<dyn TransformSanitizeToken>>,
+impl TypeColumnEntry {
+    pub fn new(header: Option<String>, target_type: Value) -> Self {
+        Self {
+            header,
+            target_type,
+        }
+    }
 }
+
+pub type TransformSanitizeTokens = Vec<Box<dyn TransformSanitizeToken>>;

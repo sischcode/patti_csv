@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
-use crate::{errors::{PattiCsvError, Result, SanitizeError}, data::{data::CsvData, column::Column}};
+use crate::{
+    data::{column::Column, data::CsvData},
+    errors::{PattiCsvError, Result, SanitizeError},
+};
 
 use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
-
 
 pub fn build_csv_data_skeleton_w_header(
     header_tokens: &Vec<String>,
@@ -62,7 +64,7 @@ pub fn sanitize_token(
             // If we have sanitizers for index=None, that means, we have global sanitizers, not bound to any index. I.e. they will always be applied.
             // Note that this strongly differs from getting None as a result of a .get on the HashMap!
             let token = match column_sanitizers.get(&None) {
-                Some(tst) => tst.transitizers.iter().try_fold(token, |acc, transitizer| {
+                Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
                     transitizer
                         .transitize(acc) // apply filter, then yield
                         // Supply more error context
@@ -87,7 +89,7 @@ pub fn sanitize_token(
                 // We don't have a local sanitizer for the specific "column", return token as is
                 None => Ok(token),
                 // Apply all sanitizers and return the sanitized token in the end
-                Some(tst) => tst.transitizers.iter().try_fold(token, |acc, transitizer| {
+                Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
                     transitizer
                         .transitize(acc)
                         // Supply more error context
@@ -127,9 +129,7 @@ pub fn sanitize_tokenizer_iter_res(
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        data::value::Value,
-    };
+    use crate::data::value::Value;
 
     use super::*;
     #[test]
@@ -178,7 +178,8 @@ mod tests {
             header: None, // first prio for header name
             target_type: Value::string_default(),
         }];
-        build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap(); // errors
+        build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
+        // errors
     }
 
     #[test]
