@@ -29,16 +29,16 @@ impl DelimitedLineTokenizerStats {
             bytes_read: 0,
         }
     }
-    pub fn is_at_header_line(&self) -> bool {
+    pub fn is_at_first_line_to_parse(&self) -> bool {
         self.lines_parsed == 1
     }
 }
 
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     buf_raw_data: BufReader<&'rd mut R>,
-    delim_char: char,
-    encl_char: Option<char>,
-    skip_take_lines: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
+    pub delim_char: char,
+    pub encl_char: Option<char>,
+    pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
     pub stats: DelimitedLineTokenizerStats,
 }
 
@@ -51,13 +51,13 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         raw_data: &'rd mut R,
         delim: char,
         enclc: Option<char>,
-        parser_opt_lines: Option<Vec<Box<dyn SkipTakeLines>>>,
+        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
     ) -> Self {
         DelimitedLineTokenizer {
             buf_raw_data: BufReader::new(raw_data),
             delim_char: delim,
             encl_char: enclc,
-            skip_take_lines: parser_opt_lines,
+            skip_take_lines_fns,
             stats: DelimitedLineTokenizerStats::new(),
         }
     }
@@ -74,7 +74,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
 
     fn skip_line_by_skiptake_sanitizer(&self, line_counter: usize, line: &String) -> bool {
         // If we have filters, we apply them and see if we need to skip this line.
-        if let Some(ref skip_take_lines) = self.skip_take_lines {
+        if let Some(ref skip_take_lines) = self.skip_take_lines_fns {
             skip_take_lines
                 .iter()
                 .map(|filter| filter.skip(Some(line_counter), Some(&line))) // check line against every sanitizer
