@@ -1,8 +1,9 @@
 use super::{data::CsvData, value::Value};
 
-pub type Row = Vec<Option<Value>>;
+pub type ValueRow = Vec<Option<Value>>;
+pub type StringRow = Vec<Option<String>>;
 
-impl From<CsvData> for Row {
+impl From<CsvData> for ValueRow {
     fn from(mut csv: CsvData) -> Self {
         csv.columns
             .iter_mut()
@@ -15,7 +16,7 @@ impl From<CsvData> for Row {
 mod tests {
     use crate::data::{column::Column, data::CsvData, value::Value};
 
-    use super::Row;
+    use super::ValueRow;
 
     #[test]
     pub fn test_try_from_w_data() {
@@ -29,7 +30,7 @@ mod tests {
         c.add_col(col1);
         c.add_col(col2);
 
-        let r: Row = c.into();
+        let r: ValueRow = c.into();
         println!("{:?}", r);
     }
 
@@ -43,7 +44,7 @@ mod tests {
         c.add_col(col1);
         c.add_col(col2);
 
-        let r: Row = c.into();
+        let r: ValueRow = c.into();
         println!("{:?}", r);
     }
 
@@ -62,7 +63,7 @@ mod tests {
         c.add_col(col2);
         c.add_col(col3);
 
-        let r: Row = c.into();
+        let r: ValueRow = c.into();
         println!("{:?}", r);
     }
 
@@ -81,7 +82,7 @@ mod tests {
         c.add_col(col2);
         c.add_col(col3);
 
-        let r: Row = c.into();
+        let r: ValueRow = c.into();
         println!("{:?}", r);
     }
 }
