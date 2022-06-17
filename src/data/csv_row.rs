@@ -1,14 +1,10 @@
-use std::collections::HashMap;
+use super::{csv_cell::CsvCell, csv_data_columns::CsvDataColumns, csv_value::CsvValue};
 
-use super::{csv_data_columns::CsvDataColumns, csv_value::CsvValue};
-
-pub type CsvValueVecRow = Vec<Option<CsvValue>>;
+pub type CsvCellRow = Vec<CsvCell>;
+pub type CsvValueRow = Vec<Option<CsvValue>>;
 pub type CsvStringRow = Vec<Option<String>>;
 
-pub type CsvValueHeaderRow = HashMap<usize, (String, CsvValue)>;
-pub type CsvValueRow = HashMap<usize, Option<CsvValue>>;
-
-impl From<CsvDataColumns> for CsvValueVecRow {
+impl From<CsvDataColumns> for CsvValueRow {
     fn from(mut csv: CsvDataColumns) -> Self {
         csv.columns
             .iter_mut()
@@ -23,7 +19,7 @@ mod tests {
         csv_column::CsvColumn, csv_data_columns::CsvDataColumns, csv_value::CsvValue,
     };
 
-    use super::CsvValueVecRow;
+    use super::CsvValueRow;
 
     #[test]
     pub fn test_try_from_w_data() {
@@ -37,7 +33,7 @@ mod tests {
         c.add_col(col1);
         c.add_col(col2);
 
-        let r: CsvValueVecRow = c.into();
+        let r: CsvValueRow = c.into();
         println!("{:?}", r);
     }
 
@@ -51,7 +47,7 @@ mod tests {
         c.add_col(col1);
         c.add_col(col2);
 
-        let r: CsvValueVecRow = c.into();
+        let r: CsvValueRow = c.into();
         println!("{:?}", r);
     }
 
@@ -70,7 +66,7 @@ mod tests {
         c.add_col(col2);
         c.add_col(col3);
 
-        let r: CsvValueVecRow = c.into();
+        let r: CsvValueRow = c.into();
         println!("{:?}", r);
     }
 
@@ -89,7 +85,7 @@ mod tests {
         c.add_col(col2);
         c.add_col(col3);
 
-        let r: CsvValueVecRow = c.into();
+        let r: CsvValueRow = c.into();
         println!("{:?}", r);
     }
 }

@@ -1,53 +1,53 @@
 use std::collections::HashMap;
 
 use crate::{
-    data::{csv_column::CsvColumn, csv_data_columns::CsvDataColumns},
+    data::{csv_cell::CsvCell, csv_row::CsvCellRow},
     errors::{PattiCsvError, Result, SanitizeError},
 };
 
 use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
 
-pub fn build_csv_data_skeleton_w_header(
-    header_tokens: &Vec<String>,
+pub fn build_layout_template(
+    header_tokens: Option<&Vec<String>>,
     column_typing: &Vec<TypeColumnEntry>,
-) -> Result<CsvDataColumns> {
-    let mut csv_data = CsvDataColumns::new(); // our return value
+) -> Result<CsvCellRow> {
+    let mut csv_cell_templ_row = CsvCellRow::new(); // our return value
 
-    let mut header_map = HashMap::<usize, String>::new();
-    for (i, token) in header_tokens.into_iter().enumerate() {
-        header_map.insert(i, token.clone());
+    match header_tokens {
+        None => {
+            for (idx, tce) in column_typing.iter().enumerate() {
+                csv_cell_templ_row.push(CsvCell::new_empty(
+                    tce.target_type.clone(),
+                    tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to indices as header, if no real header name is given
+                    idx,
+                ));
+            }
+        }
+        Some(header_tokens) => {
+            let mut header_map = HashMap::<usize, String>::new();
+            for (i, token) in header_tokens.into_iter().enumerate() {
+                header_map.insert(i, token.clone());
+            }
+
+            for (idx, tce) in column_typing.into_iter().enumerate() {
+                csv_cell_templ_row.push(CsvCell::new_empty(
+                    tce.target_type.clone(),
+                    // Either we have a header name from the typings, or the headerline.
+                    // If we have no header from the typings (which is ok) and also NO
+                    // header from the headerline (not ok), then we need to error.
+                    tce.header
+                        .as_ref()
+                        .or(header_map.get(&idx))
+                        .ok_or(PattiCsvError::Generic {
+                            msg: format!("No header provided for column#{}", idx),
+                        })?
+                        .clone(),
+                    idx,
+                ));
+            }
+        }
     }
-
-    for (idx, tce) in column_typing.into_iter().enumerate() {
-        csv_data.columns.push(CsvColumn::new(
-            tce.target_type.clone(),
-            // Either we have a header name from the typings, or the headerline.
-            // If we have no header from the typings (which is ok) and also NO
-            // header from the headerline (not ok), then we need to error.
-            tce.header
-                .as_ref()
-                .or(header_map.get(&idx))
-                .ok_or(PattiCsvError::Generic {
-                    msg: format!("No header provided for column#{}", idx),
-                })?
-                .clone(),
-            idx,
-        ));
-    }
-    Ok(csv_data)
-}
-
-pub fn build_csv_data_skeleton(column_typing: &Vec<TypeColumnEntry>) -> CsvDataColumns {
-    let mut csv_data = CsvDataColumns::new(); // our return value
-
-    for (idx, tce) in column_typing.iter().enumerate() {
-        csv_data.columns.push(CsvColumn::new(
-            tce.target_type.clone(),
-            tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to indices as header, if no real header name is given
-            idx,
-        ));
-    }
-    csv_data
+    return Ok(csv_cell_templ_row);
 }
 
 pub fn sanitize_token(
@@ -132,17 +132,19 @@ mod tests {
     use crate::data::csv_value::CsvValue;
 
     use super::*;
+
+    // Supply both, header tokens and info via typings. Typings must get precedence.
     #[test]
-    fn test_build_csv_data_skeleton_w_header_from_header_tokens() {
+    fn test_build_layout_template_w_typings_precedence() {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
             target_type: CsvValue::string_default(),
         }];
-        let res = build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
+        let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
-        let mut exp = CsvDataColumns::new();
-        exp.add_col(CsvColumn::new(
+        let mut exp = CsvCellRow::new();
+        exp.push(CsvCell::new_empty(
             CsvValue::string_default(),
             "header1-from-column-typings".into(),
             0,
@@ -151,17 +153,18 @@ mod tests {
         assert_eq!(exp, res);
     }
 
+    // Supply info via header line only.
     #[test]
-    fn test_build_csv_data_skeleton_w_header_from_column_typings() {
+    fn test_build_layout_template_w_header_from_header_tokens() {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name (used here!)
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: None, // first prio for header name
             target_type: CsvValue::string_default(),
         }];
-        let res = build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
+        let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
-        let mut exp = CsvDataColumns::new();
-        exp.add_col(CsvColumn::new(
+        let mut exp = CsvCellRow::new();
+        exp.push(CsvCell::new_empty(
             CsvValue::string_default(),
             "header1-from-header-tokens".into(),
             0,
@@ -171,27 +174,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "No header provided for column#0")]
-    fn test_build_csv_data_skeleton_w_header_err_no_header_info() {
-        let header_tokens: &Vec<String> = &vec![]; // second prio for header name
-        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
-            header: None, // first prio for header name
-            target_type: CsvValue::string_default(),
-        }];
-        build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
-        // errors
-    }
-
-    #[test]
-    fn test_build_csv_data_skeleton_with_headers() {
+    fn test_build_layout_template_w_header_from_typings() {
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
             target_type: CsvValue::string_default(),
         }];
-        let res = build_csv_data_skeleton(column_typing);
+        let res = build_layout_template(None, column_typing).unwrap();
 
-        let mut exp = CsvDataColumns::new();
-        exp.add_col(CsvColumn::new(
+        let mut exp = CsvCellRow::new();
+        exp.push(CsvCell::new_empty(
             CsvValue::string_default(),
             "header1-from-column-typings".into(),
             0,
@@ -201,15 +192,32 @@ mod tests {
     }
 
     #[test]
-    fn test_build_csv_data_skeleton_without_headers() {
+    #[should_panic(expected = "No header provided for column#0")]
+    fn test_build_layout_template_w_header_err_no_header_info() {
+        let header_tokens: &Vec<String> = &vec![]; // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: None, // first prio for header name
             target_type: CsvValue::string_default(),
         }];
-        let res = build_csv_data_skeleton(column_typing);
+        build_layout_template(Some(header_tokens), column_typing).unwrap();
+        // errors
+    }
 
-        let mut exp = CsvDataColumns::new();
-        exp.add_col(CsvColumn::new(CsvValue::string_default(), "0".into(), 0)); // fallback to index as header "name" (used here!)
+    // Neithe header tokens, nor headers via typings are supplied. Fallback to indices.
+    #[test]
+    fn test_build_layout_template_no_info_fallback_to_index() {
+        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
+            header: None, // first prio for header name
+            target_type: CsvValue::string_default(),
+        }];
+        let res = build_layout_template(None, column_typing).unwrap();
+
+        let mut exp = CsvCellRow::new();
+        exp.push(CsvCell::new_empty(
+            CsvValue::string_default(),
+            "0".into(),
+            0,
+        )); // fallback to index as header "name" (used here!)
 
         assert_eq!(exp, res);
     }
