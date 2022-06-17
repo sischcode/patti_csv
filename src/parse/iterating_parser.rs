@@ -162,7 +162,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
                     // All we really care about here is, that we default the type to String.
-                    let header_and_val = &self
+                    let header_name = &self
                         .col_layout_template
                         .as_ref()
                         .unwrap() // This is set above, no risk in calling unwrap here!
@@ -174,9 +174,9 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
 
                     let new_csv_cell = CsvCell::new(
                         CsvValue::string_default(),
-                        header_and_val.clone(),
+                        header_name.clone(),
                         i,
-                        Some(header_and_val.clone().into()),
+                        Some(header_name.clone().into()),
                     );
                     csv_header_data_cell_row.push(new_csv_cell);
                 });
@@ -195,7 +195,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         }
 
         // Shared logic for all data, or non-header lines
-        let mut csv_cell_row_data: CsvCellRow = match self.col_layout_template.clone() {
+        let mut row_data: CsvCellRow = match self.col_layout_template.clone() {
             Some(v) => v,
             None => {
                 return Some(Err(PattiCsvError::Generic {
@@ -213,7 +213,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut col_iter = csv_cell_row_data.iter_mut().enumerate();
+        let mut col_iter = row_data.iter_mut().enumerate();
         while let Some((i, cell)) = col_iter.next() {
             let curr_token = sanitized_tokens.get(i).unwrap();
             cell.data = match CsvValue::from_string_with_templ(curr_token.clone(), &cell.type_info)
@@ -223,7 +223,9 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             };
         }
 
-        Some(Ok((csv_cell_row_data, dlt_iter_res_stats)))
+        // TODO: transform_enrich step would be here!
+
+        Some(Ok((row_data, dlt_iter_res_stats)))
     }
 }
 
