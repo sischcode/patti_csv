@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    data::{column::Column, data::CsvData},
+    data::{csv_column::CsvColumn, csv_data_columns::CsvDataColumns},
     errors::{PattiCsvError, Result, SanitizeError},
 };
 
@@ -10,8 +10,8 @@ use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
 pub fn build_csv_data_skeleton_w_header(
     header_tokens: &Vec<String>,
     column_typing: &Vec<TypeColumnEntry>,
-) -> Result<CsvData> {
-    let mut csv_data = CsvData::new(); // our return value
+) -> Result<CsvDataColumns> {
+    let mut csv_data = CsvDataColumns::new(); // our return value
 
     let mut header_map = HashMap::<usize, String>::new();
     for (i, token) in header_tokens.into_iter().enumerate() {
@@ -19,7 +19,7 @@ pub fn build_csv_data_skeleton_w_header(
     }
 
     for (idx, tce) in column_typing.into_iter().enumerate() {
-        csv_data.columns.push(Column::new(
+        csv_data.columns.push(CsvColumn::new(
             tce.target_type.clone(),
             // Either we have a header name from the typings, or the headerline.
             // If we have no header from the typings (which is ok) and also NO
@@ -37,11 +37,11 @@ pub fn build_csv_data_skeleton_w_header(
     Ok(csv_data)
 }
 
-pub fn build_csv_data_skeleton(column_typing: &Vec<TypeColumnEntry>) -> CsvData {
-    let mut csv_data = CsvData::new(); // our return value
+pub fn build_csv_data_skeleton(column_typing: &Vec<TypeColumnEntry>) -> CsvDataColumns {
+    let mut csv_data = CsvDataColumns::new(); // our return value
 
     for (idx, tce) in column_typing.iter().enumerate() {
-        csv_data.columns.push(Column::new(
+        csv_data.columns.push(CsvColumn::new(
             tce.target_type.clone(),
             tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to indices as header, if no real header name is given
             idx,
@@ -129,7 +129,7 @@ pub fn sanitize_tokenizer_iter_res(
 #[cfg(test)]
 mod tests {
 
-    use crate::data::value::Value;
+    use crate::data::csv_value::CsvValue;
 
     use super::*;
     #[test]
@@ -137,13 +137,13 @@ mod tests {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
-            target_type: Value::string_default(),
+            target_type: CsvValue::string_default(),
         }];
         let res = build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
 
-        let mut exp = CsvData::new();
-        exp.add_col(Column::new(
-            Value::string_default(),
+        let mut exp = CsvDataColumns::new();
+        exp.add_col(CsvColumn::new(
+            CsvValue::string_default(),
             "header1-from-column-typings".into(),
             0,
         ));
@@ -156,13 +156,13 @@ mod tests {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name (used here!)
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: None, // first prio for header name
-            target_type: Value::string_default(),
+            target_type: CsvValue::string_default(),
         }];
         let res = build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
 
-        let mut exp = CsvData::new();
-        exp.add_col(Column::new(
-            Value::string_default(),
+        let mut exp = CsvDataColumns::new();
+        exp.add_col(CsvColumn::new(
+            CsvValue::string_default(),
             "header1-from-header-tokens".into(),
             0,
         ));
@@ -176,7 +176,7 @@ mod tests {
         let header_tokens: &Vec<String> = &vec![]; // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: None, // first prio for header name
-            target_type: Value::string_default(),
+            target_type: CsvValue::string_default(),
         }];
         build_csv_data_skeleton_w_header(header_tokens, column_typing).unwrap();
         // errors
@@ -186,13 +186,13 @@ mod tests {
     fn test_build_csv_data_skeleton_with_headers() {
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
-            target_type: Value::string_default(),
+            target_type: CsvValue::string_default(),
         }];
         let res = build_csv_data_skeleton(column_typing);
 
-        let mut exp = CsvData::new();
-        exp.add_col(Column::new(
-            Value::string_default(),
+        let mut exp = CsvDataColumns::new();
+        exp.add_col(CsvColumn::new(
+            CsvValue::string_default(),
             "header1-from-column-typings".into(),
             0,
         ));
@@ -204,12 +204,12 @@ mod tests {
     fn test_build_csv_data_skeleton_without_headers() {
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
             header: None, // first prio for header name
-            target_type: Value::string_default(),
+            target_type: CsvValue::string_default(),
         }];
         let res = build_csv_data_skeleton(column_typing);
 
-        let mut exp = CsvData::new();
-        exp.add_col(Column::new(Value::string_default(), "0".into(), 0)); // fallback to index as header "name" (used here!)
+        let mut exp = CsvDataColumns::new();
+        exp.add_col(CsvColumn::new(CsvValue::string_default(), "0".into(), 0)); // fallback to index as header "name" (used here!)
 
         assert_eq!(exp, res);
     }

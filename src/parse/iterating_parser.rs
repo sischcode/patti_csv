@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::marker::PhantomData;
 
-use crate::data::column::Column;
-use crate::data::data::CsvData;
-use crate::data::value::Value;
+use crate::data::csv_column::CsvColumn;
+use crate::data::csv_value::CsvValue;
+use crate::data::csv_data_columns::CsvDataColumns;
 use crate::errors::{PattiCsvError, Result};
 use crate::parse::line_tokenizer::DelimitedLineTokenizer;
 
@@ -119,11 +119,11 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     patti_csv_parser: PattiCsvParser<'rd, R>,
-    col_layout_template: Option<CsvData>,
+    col_layout_template: Option<CsvDataColumns>,
 }
 
 impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
-    type Item = Result<(CsvData, DelimitedLineTokenizerStats)>;
+    type Item = Result<(CsvDataColumns, DelimitedLineTokenizerStats)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
@@ -141,7 +141,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 for _ in 0..dlt_iter_res_vec.len() {
                     self.patti_csv_parser
                         .column_typings
-                        .push(TypeColumnEntry::new(None, Value::string_default()));
+                        .push(TypeColumnEntry::new(None, CsvValue::string_default()));
                 }
             }
 
@@ -157,7 +157,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 // Special case for the header line, where our datatype is always, hardcoded, a string.
                 // Also, we need to use the correct header names that may come from the typings, or
                 // the headerline, or are defaulted to indices, in this order!
-                let mut csv_data: CsvData = CsvData::new();
+                let mut csv_data: CsvDataColumns = CsvDataColumns::new();
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
                     // All we really care about here is, that we default the type to String.
@@ -173,7 +173,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     // TODO: do we want transitization on the headers!?
 
                     let mut new_col =
-                        Column::new(Value::string_default(), header_and_val.clone(), i);
+                        CsvColumn::new(CsvValue::string_default(), header_and_val.clone(), i);
                     new_col.push(Some(header_and_val.clone().into()));
                     csv_data.add_col(new_col);
                 });
@@ -188,7 +188,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         }
 
         // Shared logic for all data, or non-header lines
-        let mut csv_data: CsvData = match self.col_layout_template.clone() {
+        let mut csv_data: CsvDataColumns = match self.col_layout_template.clone() {
             Some(v) => v,
             None => {
                 return Some(Err(PattiCsvError::Generic {
@@ -210,7 +210,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         while let Some((i, col)) = col_iter.next() {
             let curr_token = sanitized_tokens.get(i).unwrap();
             col.push(
-                match Value::from_string_with_templ(curr_token.clone(), &col.type_info) {
+                match CsvValue::from_string_with_templ(curr_token.clone(), &col.type_info) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 },
@@ -222,7 +222,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
 }
 
 impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
-    type Item = Result<(CsvData, DelimitedLineTokenizerStats)>;
+    type Item = Result<(CsvDataColumns, DelimitedLineTokenizerStats)>;
     type IntoIter = PattiCsvParserIterator<'rd, R>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -235,7 +235,10 @@ impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::{transform_sanitize_token::{ToLowercase, TrimAll}, skip_take_lines::{SkipLinesStartingWith, SkipLinesFromEnd}};
+    use crate::parse::{
+        skip_take_lines::{SkipLinesFromEnd, SkipLinesStartingWith},
+        transform_sanitize_token::{ToLowercase, TrimAll},
+    };
 
     use super::*;
 
@@ -253,9 +256,9 @@ mod tests {
             .first_line_is_header(false)
             .mandatory_column_typings(true)
             .column_typings(vec![
-                TypeColumnEntry::new(None, Value::int32_default()),
-                TypeColumnEntry::new(None, Value::string_default()),
-                TypeColumnEntry::new(None, Value::bool_default()),
+                TypeColumnEntry::new(None, CsvValue::int32_default()),
+                TypeColumnEntry::new(None, CsvValue::string_default()),
+                TypeColumnEntry::new(None, CsvValue::bool_default()),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -296,10 +299,10 @@ mod tests {
             .enclosure_char(Some('\''))
             .first_line_is_header(true)
             .column_typings(vec![
-                TypeColumnEntry::new(None, Value::int32_default()),
-                TypeColumnEntry::new(Some(String::from("col2")), Value::string_default()),
-                TypeColumnEntry::new(Some(String::from("col3")), Value::bool_default()),
-                TypeColumnEntry::new(Some(String::from("col4")), Value::string_default()),
+                TypeColumnEntry::new(None, CsvValue::int32_default()),
+                TypeColumnEntry::new(Some(String::from("col2")), CsvValue::string_default()),
+                TypeColumnEntry::new(Some(String::from("col3")), CsvValue::bool_default()),
+                TypeColumnEntry::new(Some(String::from("col4")), CsvValue::string_default()),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -347,8 +350,13 @@ mod tests {
             .first_line_is_header(true)
             .mandatory_column_typings(false)
             .skip_take_lines_fns(vec![
-                Box::new(SkipLinesStartingWith {starts_with: String::from("#")}),
-                Box::new(SkipLinesFromEnd {skip_num_lines: 1, lines_total: 5}),
+                Box::new(SkipLinesStartingWith {
+                    starts_with: String::from("#"),
+                }),
+                Box::new(SkipLinesFromEnd {
+                    skip_num_lines: 1,
+                    lines_total: 5,
+                }),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
