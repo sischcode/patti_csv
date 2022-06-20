@@ -3,16 +3,14 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::marker::PhantomData;
 
-use crate::data::csv_column::CsvColumn;
+use crate::data::csv_cell::CsvCell;
+use crate::data::csv_row::CsvCellRow;
 use crate::data::csv_value::CsvValue;
-use crate::data::csv_data_columns::CsvDataColumns;
 use crate::errors::{PattiCsvError, Result};
 use crate::parse::line_tokenizer::DelimitedLineTokenizer;
 
 use super::line_tokenizer::DelimitedLineTokenizerStats;
-use super::parser_common::{
-    build_csv_data_skeleton, build_csv_data_skeleton_w_header, sanitize_tokenizer_iter_res,
-};
+use super::parser_common::{build_layout_template, sanitize_tokenizer_iter_res};
 use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
 use super::skip_take_lines::SkipTakeLines;
 
@@ -115,15 +113,16 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             ),
         })
     }
+    // TODO: default_to_string_on_no_typings = true
 }
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     patti_csv_parser: PattiCsvParser<'rd, R>,
-    col_layout_template: Option<CsvDataColumns>,
+    col_layout_template: Option<CsvCellRow>,
 }
 
 impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
-    type Item = Result<(CsvDataColumns, DelimitedLineTokenizerStats)>;
+    type Item = Result<(CsvCellRow, DelimitedLineTokenizerStats)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
@@ -145,9 +144,11 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 }
             }
 
+            // If this is the case, we need to set the correct headers in our template, then return
+            // the data as the first line.
             if self.patti_csv_parser.first_line_is_header {
-                self.col_layout_template = match build_csv_data_skeleton_w_header(
-                    &dlt_iter_res_vec,
+                self.col_layout_template = match build_layout_template(
+                    Some(&dlt_iter_res_vec),
                     &self.patti_csv_parser.column_typings,
                 ) {
                     Ok(v) => Some(v),
@@ -155,40 +156,46 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 };
 
                 // Special case for the header line, where our datatype is always, hardcoded, a string.
-                // Also, we need to use the correct header names that may come from the typings, or
-                // the headerline, or are defaulted to indices, in this order!
-                let mut csv_data: CsvDataColumns = CsvDataColumns::new();
+                // Also, we need to use the correct header names that may come from the typings, or the
+                // headerline, or are defaulted to indices, in this order!
+                let mut csv_header_data_cell_row: CsvCellRow = CsvCellRow::new();
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
                     // All we really care about here is, that we default the type to String.
-                    let header_and_val = &self
+                    let header_name = &self
                         .col_layout_template
                         .as_ref()
                         .unwrap() // This is set above, no risk in calling unwrap here!
-                        .columns
                         .get(i)
-                        .unwrap() // We must have this column
-                        .name;
+                        .unwrap()
+                        .header;
 
                     // TODO: do we want transitization on the headers!?
 
-                    let mut new_col =
-                        CsvColumn::new(CsvValue::string_default(), header_and_val.clone(), i);
-                    new_col.push(Some(header_and_val.clone().into()));
-                    csv_data.add_col(new_col);
+                    let new_csv_cell = CsvCell::new(
+                        CsvValue::string_default(),
+                        header_name.clone(),
+                        i,
+                        Some(header_name.clone().into()),
+                    );
+                    csv_header_data_cell_row.push(new_csv_cell);
                 });
-                return Some(Ok((csv_data, dlt_iter_res_stats)));
+                return Some(Ok((csv_header_data_cell_row, dlt_iter_res_stats)));
             } else {
-                // In this case, the first line is actual data, meaning, we first
-                // need to build the structure, without parsing and setting the headers
-                self.col_layout_template = Some(build_csv_data_skeleton(
-                    &self.patti_csv_parser.column_typings,
-                ));
+                // In this case, the first line is actual data, meaning, we first need to build the
+                // structure, without parsing and setting the headers.
+                // We do not(!) return this immediately as the first line, since we must first sanitize
+                // and then type the data.
+                self.col_layout_template =
+                    match build_layout_template(None, &self.patti_csv_parser.column_typings) {
+                        Ok(v) => Some(v),
+                        Err(e) => return Some(Err(e)),
+                    };
             }
         }
 
         // Shared logic for all data, or non-header lines
-        let mut csv_data: CsvDataColumns = match self.col_layout_template.clone() {
+        let mut row_data: CsvCellRow = match self.col_layout_template.clone() {
             Some(v) => v,
             None => {
                 return Some(Err(PattiCsvError::Generic {
@@ -206,23 +213,24 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut col_iter = csv_data.columns.iter_mut().enumerate();
-        while let Some((i, col)) = col_iter.next() {
+        let mut col_iter = row_data.iter_mut().enumerate();
+        while let Some((i, cell)) = col_iter.next() {
             let curr_token = sanitized_tokens.get(i).unwrap();
-            col.push(
-                match CsvValue::from_string_with_templ(curr_token.clone(), &col.type_info) {
-                    Ok(v) => v,
-                    Err(e) => return Some(Err(e)),
-                },
-            );
+            cell.data = match CsvValue::from_string_with_templ(curr_token.clone(), &cell.type_info)
+            {
+                Ok(v) => v,
+                Err(e) => return Some(Err(e)),
+            };
         }
 
-        Some(Ok((csv_data, dlt_iter_res_stats)))
+        // TODO: transform_enrich step would be here!
+
+        Some(Ok((row_data, dlt_iter_res_stats)))
     }
 }
 
 impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
-    type Item = Result<(CsvDataColumns, DelimitedLineTokenizerStats)>;
+    type Item = Result<(CsvCellRow, DelimitedLineTokenizerStats)>;
     type IntoIter = PattiCsvParserIterator<'rd, R>;
 
     fn into_iter(self) -> Self::IntoIter {
