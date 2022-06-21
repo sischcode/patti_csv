@@ -389,4 +389,74 @@ mod tests {
         println!("{:?}", iter.next()); // headers
         println!("{:?}", iter.next()); // line 1
     }
+
+    #[test]
+    fn test_parser_date_default_patterns() {
+        let mut test_data_cursor = std::io::Cursor::new(
+            "c1,c2,c3\n2022-01-01,2022-02-02 12:00:00,2022-12-31T06:00:00+05:00",
+        );
+
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        transitizers.insert(None, vec![Box::new(ToLowercase)]);
+        transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
+
+        let parser = PattiCsvParserBuilder::new()
+            .first_line_is_header(true)
+            .column_typings(vec![
+                TypeColumnEntry::new(Some(String::from("col1")), Value::naive_date_default()),
+                TypeColumnEntry::new(Some(String::from("col2")), Value::naive_date_time_default()),
+                TypeColumnEntry::new(Some(String::from("col3")), Value::date_time_default()),
+            ])
+            .column_transitizers(transitizers)
+            .build(&mut test_data_cursor)
+            .unwrap();
+
+        let mut iter = parser.into_iter();
+        let headers = iter.next();
+        let line_1 = iter.next();
+
+        println!("{:?}", headers);
+        println!("{:?}", line_1);
+    }
+
+    #[test]
+    fn test_parser_date_manual_chrono_patterns() {
+        let mut test_data_cursor = std::io::Cursor::new(
+            "c1,c2,c3\n20.01.2022,20.01.2022 12_00_00,20.1.2022 8:00 am +0000",
+        );
+
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        transitizers.insert(None, vec![Box::new(ToLowercase)]);
+        transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
+
+        let parser = PattiCsvParserBuilder::new()
+            .first_line_is_header(true)
+            .column_typings(vec![
+                TypeColumnEntry::new_with_chrono_pattern(
+                    Some(String::from("col1")),
+                    Value::naive_date_default(),
+                    "%d.%m.%Y",
+                ),
+                TypeColumnEntry::new_with_chrono_pattern(
+                    Some(String::from("col2")),
+                    Value::naive_date_time_default(),
+                    "%d.%m.%Y %H_%M_%S",
+                ),
+                TypeColumnEntry::new_with_chrono_pattern(
+                    Some(String::from("col3")),
+                    Value::date_time_default(),
+                    "%d.%m.%Y %H:%M %P %z",
+                ),
+            ])
+            .column_transitizers(transitizers)
+            .build(&mut test_data_cursor)
+            .unwrap();
+
+        let mut iter = parser.into_iter();
+        let headers = iter.next();
+        let line_1 = iter.next();
+
+        println!("{:?}", headers);
+        println!("{:?}", line_1);
+    }
 }
