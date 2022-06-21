@@ -1,56 +1,41 @@
-use std::fmt::Display;
+use strum_macros::Display;
 use thiserror::Error;
 
-use crate::data::csv_value::CsvValue;
+use venum::{errors::VenumError, venum::Value};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Display, Clone)]
+pub enum WrappedErrors {
+    VenumError(VenumError),
+}
+
+#[derive(Debug, PartialEq, Display, Clone)]
 pub enum PattiCsvError {
     Generic { msg: String },
-    Conversion(ConversionError),
+    Wrapped(WrappedErrors),
     Split(SplitError),
     Tokenize(TokenizerError),
     Sanitize(SanitizeError),
 }
 
-impl Display for PattiCsvError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PattiCsvError::Generic { msg } => write!(f, "An error occurred: {:?}", msg),
-            PattiCsvError::Conversion(ce) => ce.fmt(f),
-            PattiCsvError::Tokenize(te) => te.fmt(f),
-            PattiCsvError::Split(se) => se.fmt(f),
-            PattiCsvError::Sanitize(se) => se.fmt(f),
-        }
+impl From<std::io::Error> for PattiCsvError {
+    fn from(e: std::io::Error) -> Self {
+        PattiCsvError::Generic { msg: e.to_string() }
     }
 }
 
-impl From<std::io::Error> for PattiCsvError {
-    fn from(e: std::io::Error) -> Self {
-        PattiCsvError::Generic { msg: e.to_string() } // we need to find something better here
+impl From<VenumError> for PattiCsvError {
+    fn from(ve: VenumError) -> Self {
+        PattiCsvError::Wrapped(WrappedErrors::VenumError(ve))
     }
 }
 
 pub type Result<T> = std::result::Result<T, PattiCsvError>;
 
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ConversionError {
-    #[error("Can't unwrap Value::{src_value:?} to basic type {basic_type:?}")]
-    UnwrapToBaseTypeFailed {
-        src_value: String,
-        basic_type: &'static str,
-    },
-    #[error("Can't construct Value::{target_type:?} from string '{src_value:?}'")]
-    ValueFromStringFailed {
-        src_value: String,
-        target_type: &'static str,
-    },
-}
-
-#[derive(Error, Debug, PartialEq, Clone)]
 #[error("error: {msg:?}; problem value: {src_val:?}; detail: {detail:?}")]
 pub struct SplitError {
     msg: String,
-    src_val: Option<CsvValue>,
+    src_val: Option<Value>,
     detail: Option<String>,
 }
 impl SplitError {
@@ -61,7 +46,7 @@ impl SplitError {
             detail: None,
         }
     }
-    pub fn from(msg: String, src_val: Option<CsvValue>, detail: Option<String>) -> Self {
+    pub fn from(msg: String, src_val: Option<Value>, detail: Option<String>) -> Self {
         Self {
             msg,
             src_val,

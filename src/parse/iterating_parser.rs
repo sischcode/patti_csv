@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::marker::PhantomData;
 
-use crate::data::csv_cell::CsvCell;
-use crate::data::csv_row::CsvCellRow;
-use crate::data::csv_value::CsvValue;
+use venum::venum::Value;
+
+use crate::data::cell::ValueCell;
+use crate::data::row::ValueCellRow;
 use crate::errors::{PattiCsvError, Result};
 use crate::parse::line_tokenizer::DelimitedLineTokenizer;
 
@@ -118,11 +119,11 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     patti_csv_parser: PattiCsvParser<'rd, R>,
-    col_layout_template: Option<CsvCellRow>,
+    col_layout_template: Option<ValueCellRow>,
 }
 
 impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
-    type Item = Result<(CsvCellRow, DelimitedLineTokenizerStats)>;
+    type Item = Result<(ValueCellRow, DelimitedLineTokenizerStats)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
@@ -140,7 +141,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 for _ in 0..dlt_iter_res_vec.len() {
                     self.patti_csv_parser
                         .column_typings
-                        .push(TypeColumnEntry::new(None, CsvValue::string_default()));
+                        .push(TypeColumnEntry::new(None, Value::string_default()));
                 }
             }
 
@@ -158,7 +159,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 // Special case for the header line, where our datatype is always, hardcoded, a string.
                 // Also, we need to use the correct header names that may come from the typings, or the
                 // headerline, or are defaulted to indices, in this order!
-                let mut csv_header_data_cell_row: CsvCellRow = CsvCellRow::new();
+                let mut csv_header_data_cell_row: ValueCellRow = ValueCellRow::new();
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
                     // All we really care about here is, that we default the type to String.
@@ -166,19 +167,20 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         .col_layout_template
                         .as_ref()
                         .unwrap() // This is set above, no risk in calling unwrap here!
+                        .data
                         .get(i)
                         .unwrap()
                         .header;
 
                     // TODO: do we want transitization on the headers!?
 
-                    let new_csv_cell = CsvCell::new(
-                        CsvValue::string_default(),
+                    let new_csv_cell = ValueCell::new(
+                        Value::string_default(),
                         header_name.clone(),
                         i,
                         Some(header_name.clone().into()),
                     );
-                    csv_header_data_cell_row.push(new_csv_cell);
+                    csv_header_data_cell_row.data.push(new_csv_cell);
                 });
                 return Some(Ok((csv_header_data_cell_row, dlt_iter_res_stats)));
             } else {
@@ -195,7 +197,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         }
 
         // Shared logic for all data, or non-header lines
-        let mut row_data: CsvCellRow = match self.col_layout_template.clone() {
+        let mut row_data: ValueCellRow = match self.col_layout_template.clone() {
             Some(v) => v,
             None => {
                 return Some(Err(PattiCsvError::Generic {
@@ -213,14 +215,27 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut col_iter = row_data.iter_mut().enumerate();
+        let mut col_iter = row_data.data.iter_mut().enumerate();
         while let Some((i, cell)) = col_iter.next() {
             let curr_token = sanitized_tokens.get(i).unwrap();
-            cell.data = match CsvValue::from_string_with_templ(curr_token.clone(), &cell.type_info)
-            {
-                Ok(v) => v,
-                Err(e) => return Some(Err(e)),
-            };
+            let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
+
+            if cell.type_info.is_some_date_type() && typings.chrono_pattern.is_some() {
+                cell.data = match Value::datetype_from_string_with_templ_and_chrono_pattern(
+                    curr_token,
+                    &cell.type_info,
+                    typings.chrono_pattern.as_ref().unwrap(), // we already checked above
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e.into())),
+                };
+            } else {
+                // Will still attempt to construct date-(time) types from the token, but only tries the specified default patterns.
+                cell.data = match Value::from_string_with_templ(curr_token, &cell.type_info) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e.into())),
+                };
+            }
         }
 
         // TODO: transform_enrich step would be here!
@@ -230,7 +245,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
 }
 
 impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
-    type Item = Result<(CsvCellRow, DelimitedLineTokenizerStats)>;
+    type Item = Result<(ValueCellRow, DelimitedLineTokenizerStats)>;
     type IntoIter = PattiCsvParserIterator<'rd, R>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -251,10 +266,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_builder_all() {
+    fn test_iterating_parser_builder_all_opts() {
         let mut test_data_cursor = std::io::Cursor::new("");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> =
+            HashMap::with_capacity(2);
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -264,9 +280,9 @@ mod tests {
             .first_line_is_header(false)
             .mandatory_column_typings(true)
             .column_typings(vec![
-                TypeColumnEntry::new(None, CsvValue::int32_default()),
-                TypeColumnEntry::new(None, CsvValue::string_default()),
-                TypeColumnEntry::new(None, CsvValue::bool_default()),
+                TypeColumnEntry::new(None, Value::int32_default()),
+                TypeColumnEntry::new(None, Value::string_default()),
+                TypeColumnEntry::new(None, Value::bool_default()),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -281,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_defaults() {
+    fn test_iterating_parser_builder_defaults() {
         let mut test_data_cursor = std::io::Cursor::new("");
         let parser = PattiCsvParserBuilder::new()
             .build(&mut test_data_cursor)
@@ -307,10 +323,10 @@ mod tests {
             .enclosure_char(Some('\''))
             .first_line_is_header(true)
             .column_typings(vec![
-                TypeColumnEntry::new(None, CsvValue::int32_default()),
-                TypeColumnEntry::new(Some(String::from("col2")), CsvValue::string_default()),
-                TypeColumnEntry::new(Some(String::from("col3")), CsvValue::bool_default()),
-                TypeColumnEntry::new(Some(String::from("col4")), CsvValue::string_default()),
+                TypeColumnEntry::new(None, Value::int32_default()),
+                TypeColumnEntry::new(Some(String::from("col2")), Value::string_default()),
+                TypeColumnEntry::new(Some(String::from("col3")), Value::bool_default()),
+                TypeColumnEntry::new(Some(String::from("col4")), Value::string_default()),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -347,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parser_03() {
+    fn test_parser_skip_comments_and_summation_lines() {
         let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
 
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
@@ -373,5 +389,75 @@ mod tests {
         let mut iter = parser.into_iter();
         println!("{:?}", iter.next()); // headers
         println!("{:?}", iter.next()); // line 1
+    }
+
+    #[test]
+    fn test_parser_date_default_patterns() {
+        let mut test_data_cursor = std::io::Cursor::new(
+            "c1,c2,c3\n2022-01-01,2022-02-02 12:00:00,2022-12-31T06:00:00+05:00",
+        );
+
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        transitizers.insert(None, vec![Box::new(ToLowercase)]);
+        transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
+
+        let parser = PattiCsvParserBuilder::new()
+            .first_line_is_header(true)
+            .column_typings(vec![
+                TypeColumnEntry::new(Some(String::from("col1")), Value::naive_date_default()),
+                TypeColumnEntry::new(Some(String::from("col2")), Value::naive_date_time_default()),
+                TypeColumnEntry::new(Some(String::from("col3")), Value::date_time_default()),
+            ])
+            .column_transitizers(transitizers)
+            .build(&mut test_data_cursor)
+            .unwrap();
+
+        let mut iter = parser.into_iter();
+        let headers = iter.next();
+        let line_1 = iter.next();
+
+        println!("{:?}", headers);
+        println!("{:?}", line_1);
+    }
+
+    #[test]
+    fn test_parser_date_manual_chrono_patterns() {
+        let mut test_data_cursor = std::io::Cursor::new(
+            "c1,c2,c3\n20.01.2022,20.01.2022 12_00_00,20.1.2022 8:00 am +0000",
+        );
+
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        transitizers.insert(None, vec![Box::new(ToLowercase)]);
+        transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
+
+        let parser = PattiCsvParserBuilder::new()
+            .first_line_is_header(true)
+            .column_typings(vec![
+                TypeColumnEntry::new_with_chrono_pattern(
+                    Some(String::from("col1")),
+                    Value::naive_date_default(),
+                    "%d.%m.%Y",
+                ),
+                TypeColumnEntry::new_with_chrono_pattern(
+                    Some(String::from("col2")),
+                    Value::naive_date_time_default(),
+                    "%d.%m.%Y %H_%M_%S",
+                ),
+                TypeColumnEntry::new_with_chrono_pattern(
+                    Some(String::from("col3")),
+                    Value::date_time_default(),
+                    "%d.%m.%Y %H:%M %P %z",
+                ),
+            ])
+            .column_transitizers(transitizers)
+            .build(&mut test_data_cursor)
+            .unwrap();
+
+        let mut iter = parser.into_iter();
+        let headers = iter.next();
+        let line_1 = iter.next();
+
+        println!("{:?}", headers);
+        println!("{:?}", line_1);
     }
 }

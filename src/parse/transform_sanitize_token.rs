@@ -2,7 +2,7 @@ use crate::errors::{PattiCsvError, Result, SanitizeError};
 use regex::Regex;
 
 pub trait TransformSanitizeToken {
-    fn transitize(&self, input_token: String) -> Result<String>;
+    fn transitize(&self, input_token: String) -> Result<String>; // TODO: &str?
 }
 
 pub struct ReplaceWith {
