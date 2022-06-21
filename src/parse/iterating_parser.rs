@@ -218,10 +218,24 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         let mut col_iter = row_data.data.iter_mut().enumerate();
         while let Some((i, cell)) = col_iter.next() {
             let curr_token = sanitized_tokens.get(i).unwrap();
-            cell.data = match Value::from_string_with_templ(curr_token, &cell.type_info) {
-                Ok(v) => v,
-                Err(e) => return Some(Err(e.into())),
-            };
+            let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
+
+            if cell.type_info.is_some_date_type() && typings.chrono_pattern.is_some() {
+                cell.data = match Value::datetype_from_string_with_templ_and_chrono_pattern(
+                    curr_token,
+                    &cell.type_info,
+                    typings.chrono_pattern.as_ref().unwrap(),
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e.into())),
+                };
+            } else {
+                // Will still attempt to construct date-(time) types from the token, but only tries the specified default patterns.
+                cell.data = match Value::from_string_with_templ(curr_token, &cell.type_info) {
+                    Ok(v) => v,
+                    Err(e) => return Some(Err(e.into())),
+                };
+            }
         }
 
         // TODO: transform_enrich step would be here!

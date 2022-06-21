@@ -136,10 +136,10 @@ mod tests {
     #[test]
     fn test_build_layout_template_w_typings_precedence() {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name
-        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
-            header: Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
-            target_type: Value::string_default(),
-        }];
+        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
+            Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
+            Value::string_default(),
+        )];
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = ValueCellRow::new();
@@ -156,10 +156,10 @@ mod tests {
     #[test]
     fn test_build_layout_template_w_header_from_header_tokens() {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name (used here!)
-        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
-            header: None, // first prio for header name
-            target_type: Value::string_default(),
-        }];
+        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
+            None, // first prio for header name
+            Value::string_default(),
+        )];
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = ValueCellRow::new();
@@ -174,10 +174,10 @@ mod tests {
 
     #[test]
     fn test_build_layout_template_w_header_from_typings() {
-        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
-            header: Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
-            target_type: Value::string_default(),
-        }];
+        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
+            Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
+            Value::string_default(),
+        )];
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = ValueCellRow::new();
@@ -194,10 +194,10 @@ mod tests {
     #[should_panic(expected = "No header provided for column#0")]
     fn test_build_layout_template_w_header_err_no_header_info() {
         let header_tokens: &Vec<String> = &vec![]; // second prio for header name
-        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
-            header: None, // first prio for header name
-            target_type: Value::string_default(),
-        }];
+        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
+            None, // first prio for header name
+            Value::string_default(),
+        )];
         build_layout_template(Some(header_tokens), column_typing).unwrap();
         // errors
     }
@@ -205,10 +205,10 @@ mod tests {
     // Neithe header tokens, nor headers via typings are supplied. Fallback to indices.
     #[test]
     fn test_build_layout_template_no_info_fallback_to_index() {
-        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry {
-            header: None, // first prio for header name
-            target_type: Value::string_default(),
-        }];
+        let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
+            None, // first prio for header name
+            Value::string_default(),
+        )];
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = ValueCellRow::new();
