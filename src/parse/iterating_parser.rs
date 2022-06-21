@@ -224,7 +224,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 cell.data = match Value::datetype_from_string_with_templ_and_chrono_pattern(
                     curr_token,
                     &cell.type_info,
-                    typings.chrono_pattern.as_ref().unwrap(),
+                    typings.chrono_pattern.as_ref().unwrap(), // we already checked above
                 ) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e.into())),
@@ -266,10 +266,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_builder_all() {
+    fn test_iterating_parser_builder_all_opts() {
         let mut test_data_cursor = std::io::Cursor::new("");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> =
+            HashMap::with_capacity(2);
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -296,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_defaults() {
+    fn test_iterating_parser_builder_defaults() {
         let mut test_data_cursor = std::io::Cursor::new("");
         let parser = PattiCsvParserBuilder::new()
             .build(&mut test_data_cursor)
@@ -362,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parser_03() {
+    fn test_parser_skip_comments_and_summation_lines() {
         let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
 
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
