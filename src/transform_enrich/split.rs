@@ -11,46 +11,6 @@ pub trait SplitValueMulti {
     fn split(&self, src: &Option<Value>) -> Result<Vec<Option<Value>>>;
 }
 
-#[derive(Debug)]
-pub struct ValueStringSeparatorCharSplitter {
-    pub sep_char: char,
-    pub split_none: bool,
-}
-
-impl SplitValue for ValueStringSeparatorCharSplitter {
-    fn split(&self, src: &Option<Value>) -> Result<(Option<Value>, Option<Value>)> {
-        if let Some(val) = src {
-            match val {
-                Value::String(s) => {
-                    let splitted: Vec<&str> = s.split(self.sep_char).collect();
-                    if splitted.len() != 2 {
-                        return Err(PattiCsvError::Split(SplitError::from(
-                            format!(
-                                "expected 2 tokens as result of split, but got: {}",
-                                splitted.len()
-                            ),
-                            src.clone(),
-                            None,
-                        )));
-                    }
-                    return Ok((
-                        Some(Value::from(String::from(splitted[0]))),
-                        Some(Value::from(String::from(splitted[1]))),
-                    ));
-                }
-                _ => Err(PattiCsvError::Split(SplitError::minim(String::from(
-                    "Not a Value::String. Can't split.",
-                )))),
-            }
-        } else if src.is_none() && self.split_none {
-            Ok((None, None))
-        } else {
-            Err(PattiCsvError::Split(SplitError::minim(String::from(
-                "Value is None, but split_none is false",
-            ))))
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct ValueStringSeparatorCharSplitterMulti {
@@ -103,6 +63,48 @@ impl SplitValueMulti for ValueStringSeparatorCharSplitterMulti {
                     )))),
                 }
             }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ValueStringSeparatorCharSplitter {
+    pub sep_char: char,
+    pub split_none: bool,
+}
+
+impl SplitValue for ValueStringSeparatorCharSplitter {
+    // TODO: from multi base impl
+    fn split(&self, src: &Option<Value>) -> Result<(Option<Value>, Option<Value>)> {
+        if let Some(val) = src {
+            match val {
+                Value::String(s) => {
+                    let splitted: Vec<&str> = s.split(self.sep_char).collect();
+                    if splitted.len() != 2 {
+                        return Err(PattiCsvError::Split(SplitError::from(
+                            format!(
+                                "expected 2 tokens as result of split, but got: {}",
+                                splitted.len()
+                            ),
+                            src.clone(),
+                            None,
+                        )));
+                    }
+                    return Ok((
+                        Some(Value::from(String::from(splitted[0]))),
+                        Some(Value::from(String::from(splitted[1]))),
+                    ));
+                }
+                _ => Err(PattiCsvError::Split(SplitError::minim(String::from(
+                    "Not a Value::String. Can't split.",
+                )))),
+            }
+        } else if src.is_none() && self.split_none {
+            Ok((None, None))
+        } else {
+            Err(PattiCsvError::Split(SplitError::minim(String::from(
+                "Value is None, but split_none is false",
+            ))))
         }
     }
 }
@@ -182,6 +184,92 @@ mod tests {
         let split_vals = split_res.unwrap();
         assert_eq!(Some(Value::from("foo".to_string())), split_vals.0);
         assert_eq!(Some(Value::from("bar".to_string())), split_vals.1);
+    }
+
+    #[test]
+    fn test_split_seperator_char_none() {
+        let sep = ValueStringSeparatorCharSplitter {
+            sep_char: ' ',
+            split_none: true,
+        };
+        let data = None;
+        let split_res = sep.split(&data);
+        assert!(split_res.is_ok());
+        let split_vals = split_res.unwrap();
+        assert_eq!(None, split_vals.0);
+        assert_eq!(None, split_vals.1);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Split(SplitError { msg: \"expected 2 tokens as result of split, but got:"
+    )]
+    fn test_split_seperator_char_err() {
+        let sep = ValueStringSeparatorCharSplitter {
+            sep_char: ' ',
+            split_none: true,
+        };
+        let data = Some(Value::from("foo bar baz".to_string()));
+        sep.split(&data).unwrap();        
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Split(SplitError { msg: \"expected 2 tokens as result of split, but got:"
+    )]
+    fn test_split_seperator_char_err2() {
+        let sep = ValueStringSeparatorCharSplitter {
+            sep_char: ' ',
+            split_none: true,
+        };
+        let data = Some(Value::from("foo".to_string()));
+        sep.split(&data).unwrap();        
+    }
+
+    #[test]
+    fn test_split_seperator_multi_char() {
+        let sep = ValueStringSeparatorCharSplitterMulti {
+            sep_char: ' ',
+            split_none: false,
+            split_none_into_num_clones: None
+        };
+        let data = Some(Value::from("foo bar baz".to_string()));
+        let split_res = sep.split(&data);
+        assert!(split_res.is_ok());
+        let split_vals = split_res.unwrap();
+        assert_eq!(&Some(Value::from("foo".to_string())), split_vals.get(0).unwrap());
+        assert_eq!(&Some(Value::from("bar".to_string())), split_vals.get(1).unwrap());
+        assert_eq!(&Some(Value::from("baz".to_string())), split_vals.get(2).unwrap());
+    }
+
+    #[test]
+    fn test_split_seperator_multi_char_none() {
+        let sep = ValueStringSeparatorCharSplitterMulti {
+            sep_char: ' ',
+            split_none: true,
+            split_none_into_num_clones: Some(3),
+        };
+        let data = None;
+        let split_res = sep.split(&data);
+        assert!(split_res.is_ok());
+        let split_vals = split_res.unwrap();
+        assert_eq!(&None, split_vals.get(0).unwrap());
+        assert_eq!(&None, split_vals.get(1).unwrap());
+        assert_eq!(&None, split_vals.get(2).unwrap());
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Split(SplitError { msg: \"Value is None, split_none is true, but split_none_into_num_clones is not set. Can't split into undefined number of targets!\", src_val: None, detail: None })"
+    )]
+    fn test_split_seperator_multi_char_none_err_config() {
+        let sep = ValueStringSeparatorCharSplitterMulti {
+            sep_char: ' ',
+            split_none: true,
+            split_none_into_num_clones: None,
+        };
+        let data = None;
+        sep.split(&data).unwrap();
     }
 
     #[test]
