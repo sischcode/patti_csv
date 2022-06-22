@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    data::{cell::ValueCell, row::ValueCellRow},
+    data::{cell::DataCell, row::DataCellRow},
     errors::{PattiCsvError, Result, SanitizeError},
 };
 
@@ -10,13 +10,13 @@ use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
 pub fn build_layout_template(
     header_tokens: Option<&Vec<String>>,
     column_typing: &Vec<TypeColumnEntry>,
-) -> Result<ValueCellRow> {
-    let mut csv_cell_templ_row = ValueCellRow::new(); // our return value
+) -> Result<DataCellRow> {
+    let mut csv_cell_templ_row = DataCellRow::new(); // our return value
 
     match header_tokens {
         None => {
             for (idx, tce) in column_typing.iter().enumerate() {
-                csv_cell_templ_row.data.push(ValueCell::new_empty(
+                csv_cell_templ_row.0.push(DataCell::new_without_data(
                     tce.target_type.clone(),
                     tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to indices as header, if no real header name is given
                     idx,
@@ -30,7 +30,7 @@ pub fn build_layout_template(
             }
 
             for (idx, tce) in column_typing.into_iter().enumerate() {
-                csv_cell_templ_row.data.push(ValueCell::new_empty(
+                csv_cell_templ_row.0.push(DataCell::new_without_data(
                     tce.target_type.clone(),
                     // Either we have a header name from the typings, or the headerline.
                     // If we have no header from the typings (which is ok) and also NO
@@ -142,8 +142,8 @@ mod tests {
         )];
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
-        let mut exp = ValueCellRow::new();
-        exp.data.push(ValueCell::new_empty(
+        let mut exp = DataCellRow::new();
+        exp.0.push(DataCell::new_without_data(
             Value::string_default(),
             "header1-from-column-typings".into(),
             0,
@@ -162,8 +162,8 @@ mod tests {
         )];
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
-        let mut exp = ValueCellRow::new();
-        exp.data.push(ValueCell::new_empty(
+        let mut exp = DataCellRow::new();
+        exp.0.push(DataCell::new_without_data(
             Value::string_default(),
             "header1-from-header-tokens".into(),
             0,
@@ -180,8 +180,8 @@ mod tests {
         )];
         let res = build_layout_template(None, column_typing).unwrap();
 
-        let mut exp = ValueCellRow::new();
-        exp.data.push(ValueCell::new_empty(
+        let mut exp = DataCellRow::new();
+        exp.0.push(DataCell::new_without_data(
             Value::string_default(),
             "header1-from-column-typings".into(),
             0,
@@ -211,9 +211,12 @@ mod tests {
         )];
         let res = build_layout_template(None, column_typing).unwrap();
 
-        let mut exp = ValueCellRow::new();
-        exp.data
-            .push(ValueCell::new_empty(Value::string_default(), "0".into(), 0)); // fallback to index as header "name" (used here!)
+        let mut exp = DataCellRow::new();
+        exp.0.push(DataCell::new_without_data(
+            Value::string_default(),
+            "0".into(),
+            0,
+        )); // fallback to index as header "name" (used here!)
 
         assert_eq!(exp, res);
     }

@@ -1,45 +1,40 @@
-use super::column::Column;
+use super::column::DataColumn;
 
 use crate::data::column::SplitValue;
 use crate::errors::{PattiCsvError, Result, SplitError};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DataColumns {
-    // + additional metadata?
-    pub columns: Vec<Column>,
-}
+pub struct DataColumnOriented(pub Vec<DataColumn>);
 
-impl DataColumns {
+impl DataColumnOriented {
     pub fn new() -> Self {
-        DataColumns {
-            columns: Vec::new(),
-        }
+        DataColumnOriented { 0: Vec::new() }
     }
 
     pub fn num_rows(&self) -> usize {
-        return if self.columns.len() == 0 {
+        return if self.0.len() == 0 {
             0
         } else {
-            self.columns.first().unwrap().data.len()
+            self.0.first().unwrap().data.len()
         };
     }
 
-    pub fn get_col(&self, idx: usize) -> Option<&Column> {
-        self.columns.iter().find(|&c| c.idx == idx)
+    pub fn get_col(&self, idx: usize) -> Option<&DataColumn> {
+        self.0.iter().find(|&c| c.idx == idx)
     }
 
-    pub fn get_col_mut(&mut self, idx: usize) -> Option<&mut Column> {
-        self.columns.iter_mut().find(|c| c.idx == idx)
+    pub fn get_col_mut(&mut self, idx: usize) -> Option<&mut DataColumn> {
+        self.0.iter_mut().find(|c| c.idx == idx)
     }
 
-    pub fn add_col(&mut self, col: Column) {
-        self.columns.push(col);
+    pub fn add_col(&mut self, col: DataColumn) {
+        self.0.push(col);
     }
 
-    pub fn del_col(&mut self, idx: usize) -> Result<Column> {
+    pub fn del_col(&mut self, idx: usize) -> Result<DataColumn> {
         let mut del = 0;
         let mut found = false;
-        for col in self.columns.iter().enumerate() {
+        for col in self.0.iter().enumerate() {
             if col.1.idx == idx {
                 del = col.0;
                 found = true;
@@ -47,7 +42,7 @@ impl DataColumns {
             }
         }
         if found {
-            return Ok(self.columns.remove(del));
+            return Ok(self.0.remove(del));
         }
         Err(PattiCsvError::Generic {
             msg: format!("could not delete column with idx {}. (not found)", idx),
@@ -58,8 +53,8 @@ impl DataColumns {
         &mut self,
         idx: usize,
         splitter: &S,
-        mut dst_left: Column,
-        mut dst_right: Column,
+        mut dst_left: DataColumn,
+        mut dst_right: DataColumn,
         delete_src_col: bool,
     ) -> Result<()>
     where
@@ -87,23 +82,23 @@ mod tests {
     use venum::venum::Value;
 
     use super::*;
-    use crate::data::column::Column;
+    use crate::data::column::DataColumn;
 
     #[test]
     fn imf_add_col() {
-        let mut imf = DataColumns::new();
-        imf.add_col(Column::new(
+        let mut imf = DataColumnOriented::new();
+        imf.add_col(DataColumn::new(
             Value::string_default(),
             "column_1".to_string(),
             0,
         ));
-        assert_eq!(1, imf.columns.len());
+        assert_eq!(1, imf.0.len());
     }
 
     #[test]
     fn imf_get_col() {
-        let mut imf = DataColumns::new();
-        imf.add_col(Column::new(
+        let mut imf = DataColumnOriented::new();
+        imf.add_col(DataColumn::new(
             Value::string_default(),
             "column_1".to_string(),
             0,
@@ -114,8 +109,8 @@ mod tests {
 
     #[test]
     fn imf_get_col_mut() {
-        let mut imf = DataColumns::new();
-        imf.add_col(Column::new(
+        let mut imf = DataColumnOriented::new();
+        imf.add_col(DataColumn::new(
             Value::string_default(),
             "column_1".to_string(),
             0,
@@ -126,8 +121,8 @@ mod tests {
 
     #[test]
     fn imf_del_col_ok() {
-        let mut imf = DataColumns::new();
-        imf.add_col(Column::new(
+        let mut imf = DataColumnOriented::new();
+        imf.add_col(DataColumn::new(
             Value::string_default(),
             "column_1".to_string(),
             0,
@@ -138,8 +133,8 @@ mod tests {
 
     #[test]
     fn imf_del_col_err() {
-        let mut imf = DataColumns::new();
-        imf.add_col(Column::new(
+        let mut imf = DataColumnOriented::new();
+        imf.add_col(DataColumn::new(
             Value::string_default(),
             "column_1".to_string(),
             0,

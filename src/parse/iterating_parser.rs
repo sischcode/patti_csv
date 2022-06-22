@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 
 use venum::venum::Value;
 
-use crate::data::cell::ValueCell;
-use crate::data::row::ValueCellRow;
+use crate::data::cell::DataCell;
+use crate::data::row::DataCellRow;
 use crate::errors::{PattiCsvError, Result};
 use crate::parse::line_tokenizer::DelimitedLineTokenizer;
 
@@ -119,11 +119,11 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     patti_csv_parser: PattiCsvParser<'rd, R>,
-    col_layout_template: Option<ValueCellRow>,
+    col_layout_template: Option<DataCellRow>,
 }
 
 impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
-    type Item = Result<(ValueCellRow, DelimitedLineTokenizerStats)>;
+    type Item = Result<(DataCellRow, DelimitedLineTokenizerStats)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
@@ -159,7 +159,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 // Special case for the header line, where our datatype is always, hardcoded, a string.
                 // Also, we need to use the correct header names that may come from the typings, or the
                 // headerline, or are defaulted to indices, in this order!
-                let mut csv_header_data_cell_row: ValueCellRow = ValueCellRow::new();
+                let mut csv_header_data_cell_row: DataCellRow = DataCellRow::new();
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
                     // All we really care about here is, that we default the type to String.
@@ -167,20 +167,20 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         .col_layout_template
                         .as_ref()
                         .unwrap() // This is set above, no risk in calling unwrap here!
-                        .data
+                        .0
                         .get(i)
                         .unwrap()
                         .header;
 
                     // TODO: do we want transitization on the headers!?
 
-                    let new_csv_cell = ValueCell::new(
+                    let new_csv_cell = DataCell::new(
                         Value::string_default(),
                         header_name.clone(),
                         i,
                         Some(header_name.clone().into()),
                     );
-                    csv_header_data_cell_row.data.push(new_csv_cell);
+                    csv_header_data_cell_row.0.push(new_csv_cell);
                 });
                 return Some(Ok((csv_header_data_cell_row, dlt_iter_res_stats)));
             } else {
@@ -197,7 +197,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         }
 
         // Shared logic for all data, or non-header lines
-        let mut row_data: ValueCellRow = match self.col_layout_template.clone() {
+        let mut row_data: DataCellRow = match self.col_layout_template.clone() {
             Some(v) => v,
             None => {
                 return Some(Err(PattiCsvError::Generic {
@@ -215,7 +215,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut col_iter = row_data.data.iter_mut().enumerate();
+        let mut col_iter = row_data.0.iter_mut().enumerate();
         while let Some((i, cell)) = col_iter.next() {
             let curr_token = sanitized_tokens.get(i).unwrap();
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
@@ -245,7 +245,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
 }
 
 impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
-    type Item = Result<(ValueCellRow, DelimitedLineTokenizerStats)>;
+    type Item = Result<(DataCellRow, DelimitedLineTokenizerStats)>;
     type IntoIter = PattiCsvParserIterator<'rd, R>;
 
     fn into_iter(self) -> Self::IntoIter {

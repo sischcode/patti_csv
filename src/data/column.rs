@@ -9,16 +9,16 @@ pub trait SplitValue {
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct Column {
+pub struct DataColumn {
     pub type_info: Value, // We use the enum variants default value as our type info
     pub name: String,     // the column header
     pub idx: usize,       // columns are zero-indexed for now!
     pub data: Vec<Option<Value>>,
 }
 
-impl Column {
+impl DataColumn {
     pub fn new(t_info: Value, name: String, idx: usize) -> Self {
-        Column {
+        DataColumn {
             type_info: t_info,
             name,
             idx,
@@ -38,7 +38,7 @@ impl Column {
             data.push(value.clone());
         }
 
-        Column {
+        DataColumn {
             type_info: t_info,
             name,
             idx,
@@ -48,7 +48,7 @@ impl Column {
 
     pub fn new_filled_with_value(value: Value, name: String, idx: usize, capacity: usize) -> Self {
         let t_info = value.clone();
-        Column::new_filled_with(Some(value), t_info, name, idx, capacity)
+        DataColumn::new_filled_with(Some(value), t_info, name, idx, capacity)
     }
 
     /// Appends data to the column.
@@ -63,13 +63,13 @@ impl Column {
     pub fn split_by<S>(
         &self,
         splitter: &S,
-        dst_left: &mut Column,
-        dst_right: &mut Column,
+        dst_left: &mut DataColumn,
+        dst_right: &mut DataColumn,
     ) -> Result<()>
     where
         S: SplitValue,
     {
-        fn push_or_err(imf_val_opt: Option<Value>, dst: &mut Column) -> Result<()> {
+        fn push_or_err(imf_val_opt: Option<Value>, dst: &mut DataColumn) -> Result<()> {
             match imf_val_opt {
                 None => {
                     dst.data.push(None);
@@ -119,14 +119,14 @@ mod tests {
     #[test]
     fn test_new_filled_with_value() {
         let col =
-            Column::new_filled_with_value(Value::Float64(1.12), String::from("col#1"), 0, 100);
+            DataColumn::new_filled_with_value(Value::Float64(1.12), String::from("col#1"), 0, 100);
         assert!(col.data.len() == 100);
         assert!(col.data.iter().all(|x| x == &Some(Value::Float64(1.12))));
     }
 
     #[test]
     fn test_new_filled_with_and_value() {
-        let col = Column::new_filled_with(
+        let col = DataColumn::new_filled_with(
             Some(Value::Float64(1.12)),
             Value::float64_default(),
             String::from("col#1"),
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_new_filled_with_and_none() {
-        let col = Column::new_filled_with(
+        let col = DataColumn::new_filled_with(
             None,
             Value::float64_default(),
             String::from("col#1"),
