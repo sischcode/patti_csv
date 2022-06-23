@@ -169,7 +169,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         .0
                         .get(i)
                         .unwrap()
-                        .header;
+                        .name;
 
                     // TODO: do we want transitization on the headers!?
 
