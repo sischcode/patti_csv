@@ -1,7 +1,7 @@
 use strum_macros::Display;
 use thiserror::Error;
 
-use venum::{errors::VenumError, venum::Value};
+use venum::errors::VenumError;
 
 #[derive(Debug, PartialEq, Display, Clone)]
 pub enum WrappedErrors {
@@ -12,47 +12,8 @@ pub enum WrappedErrors {
 pub enum PattiCsvError {
     Generic { msg: String },
     Wrapped(WrappedErrors),
-    Split(SplitError),
     Tokenize(TokenizerError),
     Sanitize(SanitizeError),
-}
-
-impl From<std::io::Error> for PattiCsvError {
-    fn from(e: std::io::Error) -> Self {
-        PattiCsvError::Generic { msg: e.to_string() }
-    }
-}
-
-impl From<VenumError> for PattiCsvError {
-    fn from(ve: VenumError) -> Self {
-        PattiCsvError::Wrapped(WrappedErrors::VenumError(ve))
-    }
-}
-
-pub type Result<T> = std::result::Result<T, PattiCsvError>;
-
-#[derive(Error, Debug, PartialEq, Clone)]
-#[error("error: {msg:?}; problem value: {src_val:?}; detail: {detail:?}")]
-pub struct SplitError {
-    msg: String,
-    src_val: Option<Value>,
-    detail: Option<String>,
-}
-impl SplitError {
-    pub fn minim(msg: String) -> Self {
-        Self {
-            msg,
-            src_val: None,
-            detail: None,
-        }
-    }
-    pub fn from(msg: String, src_val: Option<Value>, detail: Option<String>) -> Self {
-        Self {
-            msg,
-            src_val,
-            detail,
-        }
-    }
 }
 
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -102,5 +63,19 @@ impl SanitizeError {
             },
             from_token: se.from_token,
         }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, PattiCsvError>;
+
+impl From<std::io::Error> for PattiCsvError {
+    fn from(e: std::io::Error) -> Self {
+        PattiCsvError::Generic { msg: e.to_string() }
+    }
+}
+
+impl From<VenumError> for PattiCsvError {
+    fn from(ve: VenumError) -> Self {
+        PattiCsvError::Wrapped(WrappedErrors::VenumError(ve))
     }
 }
