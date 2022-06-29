@@ -10,6 +10,7 @@ use crate::{
     errors::{PattiCsvError, Result},
     iterating_parser::{PattiCsvParser, PattiCsvParserBuilder},
     parser_config::{TransformSanitizeTokens, TypeColumnEntry},
+    skip_take_lines::*,
     transform_sanitize_token::*,
 };
 
@@ -144,9 +145,23 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
             })
         }
 
+        let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
+        if let Some(skip_take_lines_cfg) = cfg.parser_opts.lines {
+            if let Some(v) = skip_take_lines_cfg.skip_empty_lines {
+                skip_take_lines.push(Box::new(SkipEmptyLines {}))
+            }
+            if let Some(v) = skip_take_lines_cfg.skip_lines_by_startswith {
+                v.iter_mut().for_each(|e| {
+                    skip_take_lines.push(Box::new(SkipLinesStartingWith { starts_with: e }))
+                })
+            }
+            // TODO....
+        }
+
         builder
             .enclosure_char(cfg.parser_opts.enclosure_char)
             .separator_char(cfg.parser_opts.separator_char)
+            .skip_take_lines_fns(s)
             .first_line_is_header(cfg.parser_opts.first_line_is_header);
 
         if !transitizers.is_empty() {
