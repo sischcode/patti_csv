@@ -1,0 +1,58 @@
+{
+    "comment": "Some optional explanation",
+    "parserOpts": {
+        "comment": "Some optional explanation",
+        "separatorChar": ",",
+        "enclosureChar": "\"",
+        "lines": {
+            "comment": "Some optional explanation",
+            "skipLinesFromStart": 1,
+            "skipLinesFromEnd": 1,
+            "skipLinesByStartswith": ["#", "-"],
+            "skipEmptyLines": true
+        },
+        "firstLineIsHeader": true
+    },
+    "sanitizeColumns": [{
+        "comment": "Some optional explanation",
+        "sanitizers": [{
+            "type": "trim",
+            "spec": "all"
+        }]
+    }, {
+        "comment": "Some optional explanation",
+        "idx": 0,
+        "sanitizers": [{
+            "type": "casing",
+            "spec": "toLower"
+        }]
+    }, {
+        "comment": "Some optional explanation",
+        "idx": 4,
+        "sanitizers": [{
+            "type": "casing",
+            "spec": "toUpper"
+        }]
+    }],
+    "typeColumns": [
+        { "comment":  "0", "header":  "Header-1", "targetType": "Char" },
+        { "comment":  "1", "header":  "Header-2", "targetType": "String" },
+        { "comment":  "2", "header":  "Header-3", "targetType": "Int8" },
+        { "comment":  "3", "header":  "Header-4", "targetType": "Int16" },
+        { "comment":  "4", "header":  "Header-5", "targetType": "Int32" },
+        { "comment":  "5", "header":  "Header-6", "targetType": "Int64" },
+        { "comment":  "6", "header":  "Header-7", "targetType": "Int128" },
+        { "comment":  "7", "header":  "Header-8", "targetType": "UInt8" },
+        { "comment":  "8", "header":  "Header-9", "targetType": "UInt16" },
+        { "comment":  "9", "header": "Header-10", "targetType": "UInt32" },
+        { "comment": "10", "header": "Header-11", "targetType": "UInt64" },
+        { "comment": "11", "header": "Header-12", "targetType": "UInt128" },
+        { "comment": "12", "header": "Header-13", "targetType": "Float32" },
+        { "comment": "13", "header": "Header-14", "targetType": "Float64" },
+        { "comment": "14", "header": "Header-15", "targetType": "Bool" },
+        { "comment": "15", "header": "Header-16", "targetType": "Decimal" },        
+        { "comment": "16", "header": "Header-17", "targetType": "NaiveDate", "srcPattern": "%Y %m %d"},
+        { "comment": "17", "header": "Header-18", "targetType": "NaiveDateTime", "srcPattern": "%Y-%m-%d %H:%M:%S"},
+        { "comment": "18", "header": "Header-19", "targetType": "DateTime", "srcPattern": "%FT%T%:z"}
+    ]
+}

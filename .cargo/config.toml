@@ -1,4 +1,16 @@
 # see: https://doc.rust-lang.org/cargo/reference/config.html
+[profile.dev]
+opt-level = 0
+debug = true
+split-debuginfo = '...'  # Platform-specific.
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+rpath = false
+
 [profile.release]
 # 2 or 3 for speed; 's' or 'z' for size optimization.
 opt-level = 3       # Optimize for speed

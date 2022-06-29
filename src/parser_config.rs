@@ -21,12 +21,12 @@ impl TypeColumnEntry {
     pub fn new_with_chrono_pattern(
         header: Option<String>,
         target_type: Value,
-        chrono_pattern: &str,
+        chrono_pattern: String,
     ) -> Self {
         Self {
             header,
             target_type,
-            chrono_pattern: Some(String::from(chrono_pattern)),
+            chrono_pattern: Some(chrono_pattern),
         }
     }
 }

@@ -16,3 +16,13 @@ regex = "1.5"
 thiserror = "1.0"
 strum = "0.24"
 strum_macros = "0.24"
+
+# These two are behind the (implicit) features: "dep:serde" and "dep:serde_json".
+serde = { version = "1.0", features = ["derive"], optional = true}
+serde_json = { version = "1.0", optional = true }
+
+[features]
+default = ["jsonconf"]
+# We have all our json conf stuff (i.e. configuration via json) in a feature "jsonconf"
+# This in turn needs serde and serde_json
+jsonconf = ["dep:serde", "dep:serde_json"]
