@@ -1,4 +1,7 @@
-use std::{collections::HashMap, io::Read};
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader, Read},
+};
 
 use venum::venum::Value;
 
@@ -135,7 +138,12 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
 
     fn try_from(tup: (&'rd mut R, ConfigRoot)) -> Result<Self> {
         let (src, cfg) = tup;
+
         let mut builder = PattiCsvParserBuilder::new();
+        builder
+            .enclosure_char(cfg.parser_opts.enclosure_char)
+            .separator_char(cfg.parser_opts.separator_char)
+            .first_line_is_header(cfg.parser_opts.first_line_is_header);
 
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
         if let Some(mut san) = cfg.sanitize_columns {
@@ -144,28 +152,44 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
                 transitizers.insert(c.0, c.1);
             })
         }
+        if !transitizers.is_empty() {
+            builder.column_transitizers(transitizers);
+        }
 
         let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
         if let Some(skip_take_lines_cfg) = cfg.parser_opts.lines {
             if let Some(v) = skip_take_lines_cfg.skip_empty_lines {
-                skip_take_lines.push(Box::new(SkipEmptyLines {}))
+                if v {
+                    skip_take_lines.push(Box::new(SkipEmptyLines {}))
+                }
             }
-            if let Some(v) = skip_take_lines_cfg.skip_lines_by_startswith {
+            if let Some(v) = skip_take_lines_cfg.skip_lines_from_start {
+                skip_take_lines.push(Box::new(SkipLinesFromStart { skip_num_lines: v }))
+            }
+            if let Some(v) = skip_take_lines_cfg.skip_lines_from_end {
+                // let reader = BufReader::new(src);
+                // let lines_total = reader.lines().count();
+
+                skip_take_lines.push(Box::new(SkipLinesFromEnd {
+                    skip_num_lines: v,
+                    lines_total: 0, // TODO: !!!
+                }))
+            }
+            if let Some(mut v) = skip_take_lines_cfg.skip_lines_by_startswith {
                 v.iter_mut().for_each(|e| {
-                    skip_take_lines.push(Box::new(SkipLinesStartingWith { starts_with: e }))
+                    skip_take_lines.push(Box::new(SkipLinesStartingWith {
+                        starts_with: std::mem::take(e),
+                    }))
                 })
             }
-            // TODO....
-        }
-
-        builder
-            .enclosure_char(cfg.parser_opts.enclosure_char)
-            .separator_char(cfg.parser_opts.separator_char)
-            .skip_take_lines_fns(s)
-            .first_line_is_header(cfg.parser_opts.first_line_is_header);
-
-        if !transitizers.is_empty() {
-            builder.column_transitizers(transitizers);
+            if let Some(mut v) = skip_take_lines_cfg.take_lines_by_startswith {
+                v.iter_mut().for_each(|e| {
+                    skip_take_lines.push(Box::new(TakeLinesStartingWith {
+                        starts_with: std::mem::take(e),
+                    }))
+                })
+            }
+            builder.skip_take_lines_fns(skip_take_lines);
         }
 
         if let Some(mut col_typings_cfg) = cfg.type_columns {
@@ -175,6 +199,7 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
                 .collect();
             builder.column_typings(col_typings);
         }
+
         builder.build(src)
     }
 }
@@ -195,7 +220,6 @@ mod tests {
                 "lines": {
                     "comment": "Some optional explanation",
                     "skipLinesFromStart": 1,
-                    "skipLinesFromEnd": 1,
                     "skipLinesByStartswith": ["#", "-"],
                     "skipEmptyLines": true
                 },
@@ -226,7 +250,8 @@ mod tests {
 
         let cfg: ConfigRoot = serde_json::from_str(cfg_str).expect("could not deserialize config");
 
-        let data_str = "# some bullshit\n\n-some bullshit again\na,b,c,d\n A, BEE , 1 , 2022-01-01 \nsome weird sum line";
+        let data_str =
+            "# some bullshit\n\n-some bullshit again\na,b,c,d\n A, BEE , 1 , 2022-01-01 ";
         let mut test_data_cursor = std::io::Cursor::new(data_str);
 
         let parser = PattiCsvParser::try_from((&mut test_data_cursor, cfg)).unwrap();

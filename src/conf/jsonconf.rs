@@ -29,7 +29,7 @@ pub struct ConfigRoot {
     pub comment: Option<String>,
     pub parser_opts: ParserOpts,
     pub sanitize_columns: Option<Vec<SanitizeColumnsEntry>>,
-    pub type_columns: Option<Vec<TypeColumnsEntry>>, // TODO: make this an option
+    pub type_columns: Option<Vec<TypeColumnsEntry>>,
 }
 
 /// If skip and take options are present, the take filter overrules the skip filter.

@@ -113,7 +113,6 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             ),
         })
     }
-    // TODO: default_to_string_on_no_typings = true
 }
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
