@@ -61,41 +61,41 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             phantom: PhantomData::default(),
         }
     }
-    pub fn separator_char(mut self, c: char) -> PattiCsvParserBuilder<R> {
+    pub fn separator_char(&mut self, c: char) -> &mut PattiCsvParserBuilder<R> {
         self.separator_char = c;
         self
     }
-    pub fn enclosure_char(mut self, c: Option<char>) -> PattiCsvParserBuilder<R> {
+    pub fn enclosure_char(&mut self, c: Option<char>) -> &mut PattiCsvParserBuilder<R> {
         self.enclosure_char = c;
         self
     }
-    pub fn first_line_is_header(mut self, b: bool) -> PattiCsvParserBuilder<R> {
+    pub fn first_line_is_header(&mut self, b: bool) -> &mut PattiCsvParserBuilder<R> {
         self.first_line_is_header = b;
         self
     }
     pub fn skip_take_lines_fns(
-        mut self,
+        &mut self,
         s: Vec<Box<dyn SkipTakeLines>>,
-    ) -> PattiCsvParserBuilder<R> {
+    ) -> &mut PattiCsvParserBuilder<R> {
         self.skip_take_lines_fns = Some(s);
         self
     }
     pub fn column_transitizers(
-        mut self,
+        &mut self,
         t: HashMap<Option<usize>, TransformSanitizeTokens>,
-    ) -> PattiCsvParserBuilder<R> {
+    ) -> &mut PattiCsvParserBuilder<R> {
         self.column_transitizers = Some(t);
         self
     }
-    pub fn mandatory_column_typings(mut self, b: bool) -> PattiCsvParserBuilder<R> {
+    pub fn mandatory_column_typings(&mut self, b: bool) -> &mut PattiCsvParserBuilder<R> {
         self.mandatory_column_typings = b;
         self
     }
-    pub fn column_typings(mut self, t: Vec<TypeColumnEntry>) -> PattiCsvParserBuilder<R> {
+    pub fn column_typings(&mut self, t: Vec<TypeColumnEntry>) -> &mut PattiCsvParserBuilder<R> {
         self.column_typings = t;
         self
     }
-    pub fn build(mut self, input_raw_data: &'rd mut R) -> Result<PattiCsvParser<'rd, R>> {
+    pub fn build(&mut self, input_raw_data: &'rd mut R) -> Result<PattiCsvParser<'rd, R>> {
         if self.mandatory_column_typings && self.column_typings.len() == 0 {
             return Err(PattiCsvError::Generic {
                 msg: String::from("Column typings have been flagged mandatory but are not set!"),
@@ -103,8 +103,8 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
         }
         Ok(PattiCsvParser {
             first_line_is_header: self.first_line_is_header,
-            column_transitizers: self.column_transitizers,
-            column_typings: self.column_typings,
+            column_transitizers: std::mem::take(&mut self.column_transitizers),
+            column_typings: std::mem::take(&mut self.column_typings),
             dlt_iter: DelimitedLineTokenizer::new(
                 input_raw_data,
                 self.separator_char,
@@ -113,7 +113,6 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             ),
         })
     }
-    // TODO: default_to_string_on_no_typings = true
 }
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
@@ -429,17 +428,17 @@ mod tests {
                 TypeColumnEntry::new_with_chrono_pattern(
                     Some(String::from("col1")),
                     Value::naive_date_default(),
-                    "%d.%m.%Y",
+                    String::from("%d.%m.%Y"),
                 ),
                 TypeColumnEntry::new_with_chrono_pattern(
                     Some(String::from("col2")),
                     Value::naive_date_time_default(),
-                    "%d.%m.%Y %H_%M_%S",
+                    String::from("%d.%m.%Y %H_%M_%S"),
                 ),
                 TypeColumnEntry::new_with_chrono_pattern(
                     Some(String::from("col3")),
                     Value::date_time_default(),
-                    "%d.%m.%Y %H:%M %P %z",
+                    String::from("%d.%m.%Y %H:%M %P %z"),
                 ),
             ])
             .column_transitizers(transitizers)
