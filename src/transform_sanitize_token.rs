@@ -2,7 +2,7 @@ use crate::errors::{PattiCsvError, Result, SanitizeError};
 use regex::Regex;
 
 pub trait TransformSanitizeToken {
-    fn transitize(&self, input_token: String) -> Result<String>; // TODO: &str?
+    fn transitize(&self, input_token: &str) -> Result<String>; // TODO: &str?
     fn get_info(&self) -> String {
         String::from("n/a")
     }
@@ -14,7 +14,7 @@ pub struct ReplaceWith {
     pub to: String,
 }
 impl TransformSanitizeToken for ReplaceWith {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.replace(self.from.as_str(), self.to.as_str()))
     }
     fn get_info(&self) -> String {
@@ -27,7 +27,7 @@ pub struct Eradicate {
     pub eradicate: String,
 }
 impl TransformSanitizeToken for Eradicate {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.replace(self.eradicate.as_str(), ""))
     }
     fn get_info(&self) -> String {
@@ -38,7 +38,7 @@ impl TransformSanitizeToken for Eradicate {
 #[derive(Debug)]
 pub struct ToLowercase;
 impl TransformSanitizeToken for ToLowercase {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.to_lowercase())
     }
     fn get_info(&self) -> String {
@@ -49,7 +49,7 @@ impl TransformSanitizeToken for ToLowercase {
 #[derive(Debug)]
 pub struct ToUppercase;
 impl TransformSanitizeToken for ToUppercase {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.to_uppercase())
     }
     fn get_info(&self) -> String {
@@ -60,7 +60,7 @@ impl TransformSanitizeToken for ToUppercase {
 #[derive(Debug)]
 pub struct TrimLeading;
 impl TransformSanitizeToken for TrimLeading {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.trim_start().into())
     }
     fn get_info(&self) -> String {
@@ -71,7 +71,7 @@ impl TransformSanitizeToken for TrimLeading {
 #[derive(Debug)]
 pub struct TrimTrailing;
 impl TransformSanitizeToken for TrimTrailing {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.trim_end().into())
     }
     fn get_info(&self) -> String {
@@ -82,7 +82,7 @@ impl TransformSanitizeToken for TrimTrailing {
 #[derive(Debug)]
 pub struct TrimAll;
 impl TransformSanitizeToken for TrimAll {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.trim().into())
     }
     fn get_info(&self) -> String {
@@ -109,20 +109,20 @@ impl RegexTake {
     }
 }
 impl TransformSanitizeToken for RegexTake {
-    fn transitize(&self, input_token: String) -> Result<String> {
+    fn transitize(&self, input_token: &str) -> Result<String> {
         let caps = self
             .regex
             .captures(&input_token)
             .ok_or(PattiCsvError::Sanitize(SanitizeError::minim(
                 "No captures, but we need exactly one.".into(),
-                input_token.clone(),
+                input_token.to_string(),
             )))?;
 
         let token_match = caps
             .get(1)
             .ok_or(PattiCsvError::Sanitize(SanitizeError::minim(
                 "No capture group#1.".into(),
-                input_token.clone(),
+                input_token.to_string(),
             )))?;
 
         Ok(String::from(token_match.as_str()))
