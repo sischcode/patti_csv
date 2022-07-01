@@ -11,32 +11,6 @@ use crate::{
     transform_sanitize_token::*,
 };
 
-impl From<&VenumValueVariantNames> for Value {
-    fn from(vvvn: &VenumValueVariantNames) -> Self {
-        match vvvn {
-            VenumValueVariantNames::Char => Value::char_default(),
-            VenumValueVariantNames::String => Value::string_default(),
-            VenumValueVariantNames::Int8 => Value::int8_default(),
-            VenumValueVariantNames::Int16 => Value::int16_default(),
-            VenumValueVariantNames::Int32 => Value::int32_default(),
-            VenumValueVariantNames::Int64 => Value::int64_default(),
-            VenumValueVariantNames::Int128 => Value::int128_default(),
-            VenumValueVariantNames::UInt8 => Value::uint8_default(),
-            VenumValueVariantNames::UInt16 => Value::uint16_default(),
-            VenumValueVariantNames::UInt32 => Value::uint32_default(),
-            VenumValueVariantNames::UInt64 => Value::uint64_default(),
-            VenumValueVariantNames::UInt128 => Value::uint128_default(),
-            VenumValueVariantNames::Float32 => Value::float32_default(),
-            VenumValueVariantNames::Float64 => Value::float64_default(),
-            VenumValueVariantNames::Bool => Value::bool_default(),
-            VenumValueVariantNames::Decimal => Value::decimal_default(),
-            VenumValueVariantNames::NaiveDate => Value::naive_date_default(),
-            VenumValueVariantNames::NaiveDateTime => Value::naive_date_time_default(),
-            VenumValueVariantNames::DateTime => Value::date_time_default(),
-        }
-    }
-}
-
 impl From<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTokens) {
     fn from(entry: &mut SanitizeColumnsEntry) -> (Option<usize>, TransformSanitizeTokens) {
         let vec_tst = entry
@@ -71,7 +45,7 @@ impl From<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTokens
                         })
                         .collect(),
                     jsonconf::SanitizeColumnOpts::RegexTake { spec } => {
-                        vec![Box::new(RegexTake::new(spec.clone()))]
+                        vec![Box::new(RegexTake::new(spec))]
                     }
                 }
             })
@@ -90,7 +64,10 @@ impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
                 Value::from(&tce.target_type),
                 std::mem::take(pattern),
             ),
-            None => TypeColumnEntry::new(tce.header.clone(), Value::from(&tce.target_type)),
+            None => TypeColumnEntry::new(
+                std::mem::take(&mut tce.header),
+                Value::from(&tce.target_type),
+            ),
         }
     }
 }
@@ -174,51 +151,130 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
 
 #[cfg(test)]
 mod tests {
+    use venum::venum::ValueName;
     use venum_tds::{cell::DataCell, row::DataCellRow};
 
     use super::*;
 
     #[test]
-    fn test() {
-        let cfg_str = r###"
-        {
-            "comment": "Some optional explanation",
-            "parserOpts": {
-                "comment": "Some optional explanation",
-                "separatorChar": ",",
-                "enclosureChar": "\"",
-                "lines": {
-                    "comment": "Some optional explanation",
-                    "skipLinesFromStart": 1,
-                    "skipLinesByStartswith": ["#", "-"],
-                    "skipEmptyLines": true
-                },
-                "firstLineIsHeader": true
-            },
-            "sanitizeColumns": [{
-                "comment": "Some optional explanation",
-                "sanitizers": [{
-                    "type": "trim",
-                    "spec": "all"
-                }]
-            }, {
-                "comment": "Some optional explanation",
-                "idx": 0,
-                "sanitizers": [{
-                    "type": "casing",
-                    "spec": "toLower"
-                }]
+    fn test_from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_trim_all() {
+        let mut sce = SanitizeColumnsEntry {
+            comment: None,
+            idx: None,
+            sanitizers: vec![SanitizeColumnOpts::Trim {
+                spec: TrimOpts::All,
             }],
-            "typeColumns": [
-                { "comment": "0", "header": "Header-1", "targetType": "Char" },
-                { "comment": "1", "header": "Header-2", "targetType": "String" },
-                { "comment": "2", "header": "Header-3", "targetType": "Int8" },
-                { "comment": "3", "header": "Header-4", "targetType": "NaiveDate", "srcPattern": "%Y-%m-%d"}
-            ]
-        }
-        "###;
+        };
+        let res_tuple: (Option<usize>, TransformSanitizeTokens) = (&mut sce).into();
+        assert_eq!(None, res_tuple.0);
 
-        let cfg: ConfigRoot = serde_json::from_str(cfg_str).expect("could not deserialize config");
+        let exp: Vec<Box<dyn TransformSanitizeToken>> = vec![Box::new(TrimAll)];
+        assert_eq!(
+            exp.get(0).unwrap().get_info(),
+            res_tuple.1.get(0).unwrap().get_info()
+        );
+    }
+
+    #[test]
+    fn test_from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_replace_with() {
+        let mut sce = SanitizeColumnsEntry {
+            comment: None,
+            idx: Some(1),
+            sanitizers: vec![SanitizeColumnOpts::Replace {
+                spec: vec![ReplaceColumnSanitizerEntry {
+                    from: String::from("foo"),
+                    to: String::from("bar"),
+                }],
+            }],
+        };
+        let res_tuple: (Option<usize>, TransformSanitizeTokens) = (&mut sce).into();
+        assert_eq!(Some(1), res_tuple.0);
+
+        let exp: Vec<Box<dyn TransformSanitizeToken>> = vec![Box::new(ReplaceWith {
+            from: String::from("foo"),
+            to: String::from("bar"),
+        })];
+        assert_eq!(
+            exp.get(0).unwrap().get_info(),
+            res_tuple.1.get(0).unwrap().get_info()
+        );
+        // println!("{:}", res_tuple.1.get(0).unwrap().get_info());
+    }
+
+    #[test]
+    fn test_from_type_columns_entry_for_type_column_entry_no_date_type() {
+        let exp = TypeColumnEntry::new(Some(String::from("header-1")), Value::char_default());
+        let mut test = TypeColumnsEntry::builder()
+            .with_header("header-1")
+            .build_with_target_type(ValueName::Char);
+        let res = TypeColumnEntry::from(&mut test);
+        assert_eq!(exp, res);
+    }
+
+    #[test]
+    fn test_from_type_columns_entry_for_type_column_entry_date_type() {
+        let exp = TypeColumnEntry::new(Some(String::from("header-1")), Value::date_time_default());
+        let mut test = TypeColumnsEntry::builder()
+            .with_header("header-1")
+            .build_with_target_type(ValueName::DateTime);
+        let res = TypeColumnEntry::from(&mut test);
+        assert_eq!(exp, res);
+    }
+
+    #[test]
+    fn test_try_from_data_cfg_root_tuple_for_patti_csv_parser_1() {
+        let cfg = ConfigRoot {
+            comment: None,
+            parser_opts: ParserOpts {
+                comment: None,
+                separator_char: ',',
+                enclosure_char: Some('"'),
+                lines: Some(ParserOptLines {
+                    comment: None,
+                    skip_lines_from_start: Some(1 as usize),
+                    skip_empty_lines: Some(true),
+                    skip_lines_by_startswith: Some(vec![String::from("#"), String::from("-")]),
+                    take_lines_by_startswith: None,
+                    skip_lines_from_end: None,
+                }),
+                first_line_is_header: true,
+            },
+            sanitize_columns: Some(vec![
+                SanitizeColumnsEntry {
+                    comment: None,
+                    idx: None,
+                    sanitizers: vec![SanitizeColumnOpts::Trim {
+                        spec: TrimOpts::All,
+                    }],
+                },
+                SanitizeColumnsEntry {
+                    comment: None,
+                    idx: Some(0 as usize),
+                    sanitizers: vec![SanitizeColumnOpts::Casing {
+                        spec: CasingOpts::ToLower,
+                    }],
+                },
+            ]),
+            type_columns: Some(vec![
+                TypeColumnsEntry::builder()
+                    .with_comment("0")
+                    .with_header("Header-1")
+                    .build_with_target_type(ValueName::Char),
+                TypeColumnsEntry::builder()
+                    .with_comment("1")
+                    .with_header("Header-2")
+                    .build_with_target_type(ValueName::String),
+                TypeColumnsEntry::builder()
+                    .with_comment("2")
+                    .with_header("Header-3")
+                    .build_with_target_type(ValueName::Int8),
+                TypeColumnsEntry::builder()
+                    .with_comment("3")
+                    .with_header("Header-4")
+                    .with_datetype_src_pattern("%F")
+                    .build_with_target_type(ValueName::NaiveDate),
+            ]),
+        };
 
         let data_str =
             "# some bullshit\n\n-some bullshit again\na,b,c,d\n A, BEE , 1 , 2022-01-01 ";
@@ -227,8 +283,23 @@ mod tests {
         let parser = PattiCsvParser::try_from((&mut test_data_cursor, cfg)).unwrap();
         let mut iter = parser.into_iter();
 
-        let res_header = iter.next().unwrap().unwrap();
-        let res_line01 = iter.next().unwrap().unwrap();
+        let res_header = iter.next().unwrap().unwrap(); // first unwrap is from the iter, second one is our result
+        let res_line01 = iter.next().unwrap().unwrap(); // first unwrap is from the iter, second one is our result
+
+        // Data is:
+        // =========================
+        // # some bullshit
+        //
+        // - some bullshit
+        // a,b,c,d
+        //  A, BEE , 1 , 2022-01-01
+        // =========================
+
+        // Data we want:
+        // ==================================================
+        // Header-1,Header-2,Header-3,Header-4
+        // char(a),String(BEE),Int8(1),NaiveDate(2022-01-01)
+        // ==================================================
 
         assert_eq!(
             DataCellRow {

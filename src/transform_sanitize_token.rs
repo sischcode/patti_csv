@@ -3,8 +3,12 @@ use regex::Regex;
 
 pub trait TransformSanitizeToken {
     fn transitize(&self, input_token: String) -> Result<String>; // TODO: &str?
+    fn get_info(&self) -> String {
+        String::from("n/a")
+    }
 }
 
+#[derive(Debug)]
 pub struct ReplaceWith {
     pub from: String,
     pub to: String,
@@ -13,8 +17,12 @@ impl TransformSanitizeToken for ReplaceWith {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.replace(self.from.as_str(), self.to.as_str()))
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct Eradicate {
     pub eradicate: String,
 }
@@ -22,50 +30,74 @@ impl TransformSanitizeToken for Eradicate {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.replace(self.eradicate.as_str(), ""))
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct ToLowercase;
 impl TransformSanitizeToken for ToLowercase {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.to_lowercase())
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct ToUppercase;
 impl TransformSanitizeToken for ToUppercase {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.to_uppercase())
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct TrimLeading;
 impl TransformSanitizeToken for TrimLeading {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.trim_start().into())
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct TrimTrailing;
 impl TransformSanitizeToken for TrimTrailing {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.trim_end().into())
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct TrimAll;
 impl TransformSanitizeToken for TrimAll {
     fn transitize(&self, input_token: String) -> Result<String> {
         Ok(input_token.trim().into())
     }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
+#[derive(Debug)]
 pub struct RegexTake {
     pub regex: Regex,
 }
 impl RegexTake {
-    pub fn new(regex_pattern: String) -> Self {
+    pub fn new(regex_pattern: &str) -> Self {
         Self {
-            regex: Regex::new(regex_pattern.as_str())
+            regex: Regex::new(regex_pattern)
                 .map_err(|e| {
                     PattiCsvError::Sanitize(SanitizeError::minim(
                         format!("{}", e),
@@ -94,6 +126,9 @@ impl TransformSanitizeToken for RegexTake {
             )))?;
 
         Ok(String::from(token_match.as_str()))
+    }
+    fn get_info(&self) -> String {
+        format!("{:?}", self)
     }
 }
 
