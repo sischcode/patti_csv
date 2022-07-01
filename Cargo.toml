@@ -5,7 +5,7 @@ authors = ["Joerg Sischka <sischcode@gmx.net>"]
 readme = "README.md"
 keywords = ["rust", "venum", "csv", "parsing", "transformation", "enrichment", "manipulation"]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.62"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,7 +14,6 @@ venum = { path = "../venum", version = "0.1.0" }
 venum_tds = { path = "../venum_tds", version = "0.1.0" }
 regex = "1.5"
 thiserror = "1.0"
-strum = "0.24"
 strum_macros = "0.24"
 
 # These two are behind the (implicit) features: "dep:serde" and "dep:serde_json".
@@ -22,7 +21,8 @@ serde = { version = "1.0", features = ["derive"], optional = true}
 serde_json = { version = "1.0", optional = true }
 
 [features]
-default = ["jsonconf"]
+# default = ["jsonconf"]
+
 # We have all our json conf stuff (i.e. configuration via json) in a feature "jsonconf"
 # This in turn needs serde and serde_json, as well as the serde feature in venum
 jsonconf = ["dep:serde", "dep:serde_json", "venum/serde"]
