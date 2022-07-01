@@ -1,15 +1,9 @@
-use std::{
-    collections::HashMap,
-    io::{BufRead, BufReader, Read},
-};
+use std::{collections::HashMap, io::Read};
 
 use venum::venum::Value;
 
 use crate::{
-    conf::jsonconf::{
-        self, CasingOpts, ConfigRoot, SanitizeColumnsEntry, TrimOpts, TypeColumnsEntry,
-        VenumValueVariantNames,
-    },
+    conf::jsonconf::{self, *},
     errors::{PattiCsvError, Result},
     iterating_parser::{PattiCsvParser, PattiCsvParserBuilder},
     parser_config::{TransformSanitizeTokens, TypeColumnEntry},
@@ -101,43 +95,11 @@ impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
     }
 }
 
-// impl<R: Read> From<ConfigRoot> for PattiCsvParserBuilder<R> {
-//     fn from(cfg: ConfigRoot) -> Self {
-//         let mut builder = PattiCsvParserBuilder::new();
-
-//         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
-//         if let Some(mut san) = cfg.sanitize_columns {
-//             san.iter_mut().for_each(|s| {
-//                 let c: (Option<usize>, TransformSanitizeTokens) = s.into();
-//                 transitizers.insert(c.0, c.1);
-//             })
-//         }
-
-//         builder
-//             .enclosure_char(cfg.parser_opts.enclosure_char)
-//             .separator_char(cfg.parser_opts.separator_char)
-//             .first_line_is_header(cfg.parser_opts.first_line_is_header);
-
-//         if !transitizers.is_empty() {
-//             builder.column_transitizers(transitizers);
-//         }
-
-//         if let Some(mut col_typings_cfg) = cfg.type_columns {
-//             let col_typings = col_typings_cfg
-//                 .iter_mut()
-//                 .map(|ct| TypeColumnEntry::from(ct))
-//                 .collect();
-//             builder.column_typings(col_typings);
-//         }
-//         builder
-//     }
-// }
-
 impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> {
     type Error = PattiCsvError;
 
-    fn try_from(tup: (&'rd mut R, ConfigRoot)) -> Result<Self> {
-        let (src, cfg) = tup;
+    fn try_from(data_config_tuple: (&'rd mut R, ConfigRoot)) -> Result<Self> {
+        let (src, cfg) = data_config_tuple;
 
         let mut builder = PattiCsvParserBuilder::new();
         builder
@@ -145,19 +107,22 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
             .separator_char(cfg.parser_opts.separator_char)
             .first_line_is_header(cfg.parser_opts.first_line_is_header);
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
         if let Some(mut san) = cfg.sanitize_columns {
+            let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+
             san.iter_mut().for_each(|s| {
                 let c: (Option<usize>, TransformSanitizeTokens) = s.into();
                 transitizers.insert(c.0, c.1);
-            })
-        }
-        if !transitizers.is_empty() {
-            builder.column_transitizers(transitizers);
+            });
+
+            if !transitizers.is_empty() {
+                builder.column_transitizers(transitizers);
+            }
         }
 
-        let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
         if let Some(skip_take_lines_cfg) = cfg.parser_opts.lines {
+            let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
+
             if let Some(v) = skip_take_lines_cfg.skip_empty_lines {
                 if v {
                     skip_take_lines.push(Box::new(SkipEmptyLines {}))
@@ -189,7 +154,10 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
                     }))
                 })
             }
-            builder.skip_take_lines_fns(skip_take_lines);
+
+            if !skip_take_lines.is_empty() {
+                builder.skip_take_lines_fns(skip_take_lines);
+            }
         }
 
         if let Some(mut col_typings_cfg) = cfg.type_columns {
@@ -206,6 +174,8 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
 
 #[cfg(test)]
 mod tests {
+    use venum_tds::{cell::DataCell, row::DataCellRow};
+
     use super::*;
 
     #[test]
@@ -255,6 +225,73 @@ mod tests {
         let mut test_data_cursor = std::io::Cursor::new(data_str);
 
         let parser = PattiCsvParser::try_from((&mut test_data_cursor, cfg)).unwrap();
-        parser.into_iter().for_each(|e| println!("{:?}", e));
+        let mut iter = parser.into_iter();
+
+        let res_header = iter.next().unwrap().unwrap();
+        let res_line01 = iter.next().unwrap().unwrap();
+
+        assert_eq!(
+            DataCellRow {
+                0: vec![
+                    DataCell::new(
+                        Value::string_default(),
+                        String::from("Header-1"),
+                        0,
+                        Some(Value::String(String::from("Header-1")))
+                    ),
+                    DataCell::new(
+                        Value::string_default(),
+                        String::from("Header-2"),
+                        1,
+                        Some(Value::String(String::from("Header-2")))
+                    ),
+                    DataCell::new(
+                        Value::string_default(),
+                        String::from("Header-3"),
+                        2,
+                        Some(Value::String(String::from("Header-3")))
+                    ),
+                    DataCell::new(
+                        Value::string_default(),
+                        String::from("Header-4"),
+                        3,
+                        Some(Value::String(String::from("Header-4")))
+                    ),
+                ]
+            },
+            res_header.0
+        );
+
+        assert_eq!(
+            DataCellRow {
+                0: vec![
+                    DataCell::new(
+                        Value::char_default(),
+                        String::from("Header-1"),
+                        0,
+                        Some(Value::Char('a'))
+                    ),
+                    DataCell::new(
+                        Value::string_default(),
+                        String::from("Header-2"),
+                        1,
+                        Some(Value::String(String::from("BEE")))
+                    ),
+                    DataCell::new(
+                        Value::int8_default(),
+                        String::from("Header-3"),
+                        2,
+                        Some(Value::Int8(1))
+                    ),
+                    DataCell::new(
+                        Value::naive_date_default(),
+                        String::from("Header-4"),
+                        3,
+                        Some(Value::parse_naive_date_from_str_iso8601_ymd("2022-01-01").unwrap())
+                    ),
+                ]
+            },
+            res_line01.0
+        );
     }
 }
