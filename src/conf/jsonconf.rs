@@ -138,9 +138,15 @@ impl TypeColumnsEntryBuilder {
         TypeColumnsEntry {
             header: self.header.clone(),
             comment: self.comment.clone(),
-            target_type: target_type,
+            target_type,
             src_pattern: self.src_pattern.clone(),
         }
+    }
+}
+
+impl Default for TypeColumnsEntryBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

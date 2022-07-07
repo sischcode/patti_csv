@@ -16,7 +16,7 @@ impl From<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTokens
         let vec_tst = entry
             .sanitizers
             .iter_mut()
-            .map(|entry_elem| -> TransformSanitizeTokens {
+            .flat_map(|entry_elem| -> TransformSanitizeTokens {
                 match entry_elem {
                     jsonconf::SanitizeColumnOpts::Trim { spec } => match spec {
                         TrimOpts::All => vec![Box::new(TrimAll)],
@@ -49,7 +49,6 @@ impl From<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTokens
                     }
                 }
             })
-            .flatten()
             .collect::<TransformSanitizeTokens>();
 
         (entry.idx, vec_tst)
@@ -140,7 +139,7 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
         if let Some(mut col_typings_cfg) = cfg.type_columns {
             let col_typings = col_typings_cfg
                 .iter_mut()
-                .map(|ct| TypeColumnEntry::from(ct))
+                .map(TypeColumnEntry::from)
                 .collect();
             builder.column_typings(col_typings);
         }

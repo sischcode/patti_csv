@@ -34,6 +34,12 @@ impl DelimitedLineTokenizerStats {
     }
 }
 
+impl Default for DelimitedLineTokenizerStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     buf_raw_data: BufReader<&'rd mut R>,
     pub delim_char: char,
@@ -77,8 +83,8 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         if let Some(ref skip_take_lines) = self.skip_take_lines_fns {
             skip_take_lines
                 .iter()
-                .map(|filter| filter.skip(Some(line_counter), Some(&line))) // check line against every sanitizer
-                .find(|res| *res == true) // if at least one yields true, we need to skip (this line)
+                .map(|filter| filter.skip(Some(line_counter), Some(line))) // check line against every sanitizer
+                .find(|res| *res) // if at least one yields true, we need to skip (this line)
                 .unwrap_or(false)
         } else {
             // If we have no filters, well, then don't skip anything.
@@ -182,7 +188,7 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
             self.stats.curr_line_num += 1;
             let bytes_read = match self.buf_raw_data.read_line(&mut line) {
                 Ok(num_bytes) => match num_bytes {
-                    _ if num_bytes == 0 as usize => return None, // returns "normal", i.e. end of "stream". ('return' always returns from a funtion!)
+                    _ if num_bytes == 0_usize => return None, // returns "normal", i.e. end of "stream". ('return' always returns from a funtion!)
                     _ => Some(num_bytes),
                 },
                 Err(e) => {
@@ -198,7 +204,7 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
         }
         self.stats.lines_parsed += 1;
 
-        match self.tokenize(self.stats.curr_line_num, &line.trim_end()) {
+        match self.tokenize(self.stats.curr_line_num, line.trim_end()) {
             Ok(v) => Some(Ok((v, self.stats.clone()))),
             Err(e) => Some(Err(e)),
         }

@@ -8,7 +8,7 @@ use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
 
 pub fn build_layout_template(
     header_tokens: Option<&Vec<String>>,
-    column_typing: &Vec<TypeColumnEntry>,
+    column_typing: &[TypeColumnEntry],
 ) -> Result<DataCellRow> {
     let mut csv_cell_templ_row = DataCellRow::new(); // our return value
 
@@ -24,11 +24,11 @@ pub fn build_layout_template(
         }
         Some(header_tokens) => {
             let mut header_map = HashMap::<usize, String>::new();
-            for (i, token) in header_tokens.into_iter().enumerate() {
+            for (i, token) in header_tokens.iter().enumerate() {
                 header_map.insert(i, token.clone());
             }
 
-            for (idx, tce) in column_typing.into_iter().enumerate() {
+            for (idx, tce) in column_typing.iter().enumerate() {
                 csv_cell_templ_row.0.push(DataCell::new_without_data(
                     tce.target_type.clone(),
                     // Either we have a header name from the typings, or the headerline.
@@ -36,7 +36,7 @@ pub fn build_layout_template(
                     // header from the headerline (not ok), then we need to error.
                     tce.header
                         .as_ref()
-                        .or(header_map.get(&idx))
+                        .or_else(|| header_map.get(&idx))
                         .ok_or(PattiCsvError::Generic {
                             msg: format!("No header provided for column#{}", idx),
                         })?
@@ -46,7 +46,7 @@ pub fn build_layout_template(
             }
         }
     }
-    return Ok(csv_cell_templ_row);
+    Ok(csv_cell_templ_row)
 }
 
 pub fn sanitize_token(
@@ -125,7 +125,7 @@ pub fn sanitize_tokenizer_iter_res(
 
     // Apply sanitization and escaping / enclosure
     for (i, token) in line_tokens.into_iter().enumerate() {
-        let sanitized_token = sanitize_token(token, &column_transitizers, line_number, i)?;
+        let sanitized_token = sanitize_token(token, column_transitizers, line_number, i)?;
         ret.push(sanitized_token);
     }
     Ok(ret)

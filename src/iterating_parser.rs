@@ -96,7 +96,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
         self
     }
     pub fn build(&mut self, input_raw_data: &'rd mut R) -> Result<PattiCsvParser<'rd, R>> {
-        if self.mandatory_column_typings && self.column_typings.len() == 0 {
+        if self.mandatory_column_typings && self.column_typings.is_empty() {
             return Err(PattiCsvError::Generic {
                 msg: String::from("Column typings have been flagged mandatory but are not set!"),
             });
@@ -115,12 +115,18 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
     }
 }
 
+impl<R: Read> Default for PattiCsvParserBuilder<R> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     patti_csv_parser: PattiCsvParser<'rd, R>,
     col_layout_template: Option<DataCellRow>,
 }
 
-impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
+impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
     type Item = Result<(DataCellRow, DelimitedLineTokenizerStats)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -135,7 +141,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         if dlt_iter_res_stats.is_at_first_line_to_parse() {
             // If we don't have type info for the columns, default to String for everything, as this is a common
             // usecase when typings are not actually needed, e.g. when we just want to skip certain things, etc.
-            if self.patti_csv_parser.column_typings.len() == 0 {
+            if self.patti_csv_parser.column_typings.is_empty() {
                 for _ in 0..dlt_iter_res_vec.len() {
                     self.patti_csv_parser
                         .column_typings
@@ -213,8 +219,8 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut col_iter = row_data.0.iter_mut().enumerate();
-        while let Some((i, cell)) = col_iter.next() {
+        let col_iter = row_data.0.iter_mut().enumerate();
+        for (i, cell) in col_iter {
             let curr_token = sanitized_tokens.get(i).unwrap();
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
 
@@ -239,7 +245,7 @@ impl<'rd, 'cfg, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
     }
 }
 
-impl<'rd, 'cfg, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
+impl<'rd, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
     type Item = Result<(DataCellRow, DelimitedLineTokenizerStats)>;
     type IntoIter = PattiCsvParserIterator<'rd, R>;
 

@@ -21,7 +21,7 @@ serde = { version = "1.0", features = ["derive"], optional = true}
 serde_json = { version = "1.0", optional = true }
 
 [features]
-# default = ["jsonconf"]
+default = ["jsonconf"]
 
 # We have all our json conf stuff (i.e. configuration via json) in a feature "jsonconf"
 # This in turn needs serde and serde_json, as well as the serde feature in venum

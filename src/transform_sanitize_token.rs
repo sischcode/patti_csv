@@ -110,20 +110,19 @@ impl RegexTake {
 }
 impl TransformSanitizeToken for RegexTake {
     fn transitize(&self, input_token: &str) -> Result<String> {
-        let caps = self
-            .regex
-            .captures(&input_token)
-            .ok_or(PattiCsvError::Sanitize(SanitizeError::minim(
+        let caps = self.regex.captures(input_token).ok_or_else(|| {
+            PattiCsvError::Sanitize(SanitizeError::minim(
                 "No captures, but we need exactly one.".into(),
                 input_token.to_string(),
-            )))?;
+            ))
+        })?;
 
-        let token_match = caps
-            .get(1)
-            .ok_or(PattiCsvError::Sanitize(SanitizeError::minim(
+        let token_match = caps.get(1).ok_or_else(|| {
+            PattiCsvError::Sanitize(SanitizeError::minim(
                 "No capture group#1.".into(),
                 input_token.to_string(),
-            )))?;
+            ))
+        })?;
 
         Ok(String::from(token_match.as_str()))
     }
