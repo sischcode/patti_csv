@@ -2,7 +2,7 @@ use crate::errors::{PattiCsvError, Result, SanitizeError};
 use regex::Regex;
 
 pub trait TransformSanitizeToken {
-    fn transitize(&self, input_token: &str) -> Result<String>; // TODO: &str?
+    fn transitize(&self, input_token: &str) -> Result<String>;
     fn get_info(&self) -> String {
         String::from("n/a")
     }
@@ -95,17 +95,14 @@ pub struct RegexTake {
     pub regex: Regex,
 }
 impl RegexTake {
-    pub fn new(regex_pattern: &str) -> Self {
-        Self {
-            regex: Regex::new(regex_pattern)
-                .map_err(|e| {
-                    PattiCsvError::Sanitize(SanitizeError::minim(
-                        format!("{}", e),
-                        "ERROR_ON_REGEX_COMPILE".into(),
-                    ))
-                })
-                .unwrap(), // TODO
-        }
+    pub fn new(regex_pattern: &str) -> Result<Self> {
+        let re = Regex::new(regex_pattern).map_err(|e| {
+            PattiCsvError::Sanitize(SanitizeError::minim(
+                format!("{}", e),
+                "ERROR_ON_REGEX_COMPILE".into(),
+            ))
+        })?;
+        Ok(Self { regex: re })
     }
 }
 impl TransformSanitizeToken for RegexTake {
@@ -139,7 +136,9 @@ mod tests {
     fn test_regex_take() {
         assert_eq!(
             Ok("10.00".into()),
-            RegexTake::new("(\\d+\\.\\d+).*".into()).transitize("10.00 (CHF)".into())
+            RegexTake::new("(\\d+\\.\\d+).*")
+                .unwrap()
+                .transitize("10.00 (CHF)".into())
         );
     }
 
@@ -150,7 +149,9 @@ mod tests {
                 "No captures, but we need exactly one.".into(),
                 "1000 (CHF)".into(),
             ))),
-            RegexTake::new("(\\d+\\.\\d+).*".into()).transitize("1000 (CHF)".into())
+            RegexTake::new("(\\d+\\.\\d+).*")
+                .unwrap()
+                .transitize("1000 (CHF)".into())
         );
     }
 
@@ -161,7 +162,7 @@ mod tests {
                 "No capture group#1.".into(),
                 "1000 (CHF)".into(),
             ))),
-            RegexTake::new("".into()).transitize("1000 (CHF)".into())
+            RegexTake::new("").unwrap().transitize("1000 (CHF)".into())
         );
     }
 

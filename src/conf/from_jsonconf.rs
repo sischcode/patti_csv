@@ -45,7 +45,8 @@ impl From<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTokens
                         })
                         .collect(),
                     jsonconf::SanitizeColumnOpts::RegexTake { spec } => {
-                        vec![Box::new(RegexTake::new(spec))]
+                        let re = RegexTake::new(spec).unwrap(); // TODO
+                        vec![Box::new(re)]
                     }
                 }
             })

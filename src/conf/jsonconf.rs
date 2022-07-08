@@ -19,8 +19,7 @@ pub struct ParserOptLines {
     pub skip_lines_from_end: Option<usize>,
     pub skip_lines_by_startswith: Option<Vec<String>>,
     pub take_lines_by_startswith: Option<Vec<String>>,
-    // TODO: skip_lines_by_regex
-    // TODO: take_lines_by_regex
+    // TODO: skip_lines_by_regex & take_lines_by_regex
     pub skip_empty_lines: Option<bool>,
 }
 

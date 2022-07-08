@@ -252,7 +252,10 @@ mod tests {
     #[test]
     fn test_sanitize_token_local() {
         let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
-        san_hm.insert(Some(0), vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*"))]);
+        san_hm.insert(
+            Some(0),
+            vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
+        );
 
         let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
 
@@ -266,7 +269,10 @@ mod tests {
     )]
     fn test_sanitize_token_global_err() {
         let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
-        san_hm.insert(None, vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*"))]);
+        san_hm.insert(
+            None,
+            vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
+        );
 
         let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
 
@@ -279,7 +285,10 @@ mod tests {
     )]
     fn test_sanitize_token_local_err() {
         let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
-        san_hm.insert(Some(0), vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*"))]);
+        san_hm.insert(
+            Some(0),
+            vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
+        );
 
         let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
 
