@@ -66,8 +66,6 @@ impl SkipTakeLines for SkipEmptyLines {
     }
 }
 
-// TODO: skip/take lines based on regex
-
 #[cfg(test)]
 mod tests {
     use crate::skip_take_lines::*;
