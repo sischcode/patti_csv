@@ -59,6 +59,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             mandatory_column_typings: false,
             column_typings: Vec::new(),
             phantom: PhantomData::default(),
+            // TODO: handling of empty-string, null and null-like string values and their mapping to Value::None. I.e. config what should be mapped to Value::None and what not
         }
     }
     pub fn separator_char(&mut self, c: char) -> &mut PattiCsvParserBuilder<R> {
