@@ -133,7 +133,7 @@ pub fn sanitize_tokenizer_iter_res(
 
 #[cfg(test)]
 mod tests {
-    use venum::venum::Value;
+    use venum::venum::{Value, ValueType};
 
     use crate::transform_sanitize_token::*;
 
@@ -145,15 +145,16 @@ mod tests {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
-            Value::string_default(),
+            ValueType::String,
         )];
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new_without_data(
-            Value::string_default(),
+        exp.0.push(DataCell::new(
+            ValueType::String,
             "header1-from-column-typings".into(),
             0,
+            Value::None,
         ));
 
         assert_eq!(exp, res);
@@ -165,15 +166,16 @@ mod tests {
         let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name (used here!)
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             None, // first prio for header name
-            Value::string_default(),
+            ValueType::String,
         )];
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new_without_data(
-            Value::string_default(),
+        exp.0.push(DataCell::new(
+            ValueType::String,
             "header1-from-header-tokens".into(),
             0,
+            Value::None,
         ));
 
         assert_eq!(exp, res);
@@ -183,15 +185,16 @@ mod tests {
     fn test_build_layout_template_w_header_from_typings() {
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
-            Value::string_default(),
+            ValueType::String,
         )];
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new_without_data(
-            Value::string_default(),
+        exp.0.push(DataCell::new(
+            ValueType::String,
             "header1-from-column-typings".into(),
             0,
+            Value::None,
         ));
 
         assert_eq!(exp, res);
@@ -203,7 +206,7 @@ mod tests {
         let header_tokens: &Vec<String> = &vec![]; // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             None, // first prio for header name
-            Value::string_default(),
+            ValueType::String,
         )];
         build_layout_template(Some(header_tokens), column_typing).unwrap();
         // errors
@@ -214,16 +217,13 @@ mod tests {
     fn test_build_layout_template_no_info_fallback_to_index() {
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             None, // first prio for header name
-            Value::string_default(),
+            ValueType::String,
         )];
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new_without_data(
-            Value::string_default(),
-            "0".into(),
-            0,
-        )); // fallback to index as header "name" (used here!)
+        exp.0
+            .push(DataCell::new(ValueType::String, "0".into(), 0, Value::None)); // fallback to index as header "name" (used here!)
 
         assert_eq!(exp, res);
     }

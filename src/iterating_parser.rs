@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::marker::PhantomData;
 
-use venum::venum::Value;
+use venum::venum::{Value, ValueType};
 use venum_tds::cell::DataCell;
 use venum_tds::row::DataCellRow;
 
@@ -145,7 +145,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 for _ in 0..dlt_iter_res_vec.len() {
                     self.patti_csv_parser
                         .column_typings
-                        .push(TypeColumnEntry::new(None, Value::string_default()));
+                        .push(TypeColumnEntry::new(None, ValueType::String));
                 }
             }
 
@@ -179,10 +179,10 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     // TODO: do we want transitization on the headers!?
 
                     let new_csv_cell = DataCell::new(
-                        Value::string_default(),
+                        ValueType::String,
                         header_name.clone(),
                         i,
-                        Some(header_name.clone().into()),
+                        header_name.clone().into(),
                     );
                     csv_header_data_cell_row.0.push(new_csv_cell);
                 });
@@ -224,10 +224,10 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             let curr_token = sanitized_tokens.get(i).unwrap();
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
 
-            if cell.type_info.is_some_date_type() && typings.chrono_pattern.is_some() {
+            if cell.dtype.is_some_date_type() && typings.chrono_pattern.is_some() {
                 cell.data = match Value::datetype_from_string_with_templ_and_chrono_pattern(
                     curr_token,
-                    &cell.type_info,
+                    &cell.dtype,
                     typings.chrono_pattern.as_ref().unwrap(), // we already checked above
                 ) {
                     Ok(v) => v,
@@ -235,7 +235,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 };
             } else {
                 // Will still attempt to construct date-(time) types from the token, but only tries the specified default patterns.
-                cell.data = match Value::from_string_with_templ(curr_token, &cell.type_info) {
+                cell.data = match Value::from_string_with_templ(curr_token, &cell.dtype) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e.into())),
                 };
@@ -278,9 +278,9 @@ mod tests {
             .first_line_is_header(false)
             .mandatory_column_typings(true)
             .column_typings(vec![
-                TypeColumnEntry::new(None, Value::int32_default()),
-                TypeColumnEntry::new(None, Value::string_default()),
-                TypeColumnEntry::new(None, Value::bool_default()),
+                TypeColumnEntry::new(None, ValueType::Int32),
+                TypeColumnEntry::new(None, ValueType::String),
+                TypeColumnEntry::new(None, ValueType::Bool),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn test_parser_01() {
-        let mut test_data_cursor = std::io::Cursor::new("c1;c2;c3;c4\n 1 ;'BaR';true;");
+        let mut test_data_cursor = std::io::Cursor::new("c1;c2;c3;c4;c5\n 1 ;'BaR';true;null;");
 
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
@@ -321,26 +321,103 @@ mod tests {
             .enclosure_char(Some('\''))
             .first_line_is_header(true)
             .column_typings(vec![
-                TypeColumnEntry::new(None, Value::int32_default()),
-                TypeColumnEntry::new(Some(String::from("col2")), Value::string_default()),
-                TypeColumnEntry::new(Some(String::from("col3")), Value::bool_default()),
-                TypeColumnEntry::new(Some(String::from("col4")), Value::string_default()),
+                TypeColumnEntry::new(None, ValueType::Int32),
+                TypeColumnEntry::new(Some(String::from("col2")), ValueType::String),
+                TypeColumnEntry::new(Some(String::from("col3")), ValueType::Bool),
+                TypeColumnEntry::new(Some(String::from("col4")), ValueType::String),
+                TypeColumnEntry::new(None, ValueType::Int32),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
             .unwrap();
 
         let mut iter = parser.into_iter();
-        let headers = iter.next();
-        let line_1 = iter.next();
+        let headers = iter.next().unwrap().unwrap().0;
+        let line_1 = iter.next().unwrap().unwrap().0;
 
-        println!("{:?}", headers);
-        println!("{:?}", line_1);
+        // println!("{:?}", headers);
+        // println!("{:?}", line_1);
+
+        assert_eq!(
+            DataCellRow {
+                0: vec![
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 0,
+                        name: String::from("c1"),
+                        data: Value::String(String::from("c1"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 1,
+                        name: String::from("col2"),
+                        data: Value::String(String::from("col2"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 2,
+                        name: String::from("col3"),
+                        data: Value::String(String::from("col3"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 3,
+                        name: String::from("col4"),
+                        data: Value::String(String::from("col4"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 4,
+                        name: String::from("c5"),
+                        data: Value::String(String::from("c5"))
+                    },
+                ]
+            },
+            headers
+        );
+
+        assert_eq!(
+            DataCellRow {
+                0: vec![
+                    DataCell {
+                        dtype: ValueType::Int32,
+                        idx: 0,
+                        name: String::from("c1"),
+                        data: Value::Int32(1)
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 1,
+                        name: String::from("col2"),
+                        data: Value::String(String::from("bar"))
+                    },
+                    DataCell {
+                        dtype: ValueType::Bool,
+                        idx: 2,
+                        name: String::from("col3"),
+                        data: Value::Bool(true)
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 3,
+                        name: String::from("col4"),
+                        data: Value::None
+                    },
+                    DataCell {
+                        dtype: ValueType::Int32,
+                        idx: 4,
+                        name: String::from("c5"),
+                        data: Value::None
+                    },
+                ]
+            },
+            line_1
+        )
     }
 
     #[test]
     fn test_parser_02() {
-        let mut test_data_cursor = std::io::Cursor::new("c1,c2,c3,c4\n 1 ,\"BaR\",true,");
+        let mut test_data_cursor = std::io::Cursor::new("c1,c2,c3,c4,c5\n 1 ,\"BaR\",true,null,");
 
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
@@ -353,11 +430,87 @@ mod tests {
             .unwrap();
 
         let mut iter = parser.into_iter();
-        let headers = iter.next();
-        let line_1 = iter.next();
+        let headers = iter.next().unwrap().unwrap().0;
+        let line_1 = iter.next().unwrap().unwrap().0;
 
-        println!("{:?}", headers);
-        println!("{:?}", line_1);
+        // println!("{:?}", headers);
+        // println!("{:?}", line_1);
+
+        assert_eq!(
+            DataCellRow {
+                0: vec![
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 0,
+                        name: String::from("c1"),
+                        data: Value::String(String::from("c1"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 1,
+                        name: String::from("c2"),
+                        data: Value::String(String::from("c2"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 2,
+                        name: String::from("c3"),
+                        data: Value::String(String::from("c3"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 3,
+                        name: String::from("c4"),
+                        data: Value::String(String::from("c4"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 4,
+                        name: String::from("c5"),
+                        data: Value::String(String::from("c5"))
+                    },
+                ]
+            },
+            headers
+        );
+
+        assert_eq!(
+            DataCellRow {
+                0: vec![
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 0,
+                        name: String::from("c1"),
+                        data: Value::String(String::from("1"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 1,
+                        name: String::from("c2"),
+                        data: Value::String(String::from("bar"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 2,
+                        name: String::from("c3"),
+                        data: Value::String(String::from("true"))
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 3,
+                        name: String::from("c4"),
+                        data: Value::None
+                    },
+                    DataCell {
+                        dtype: ValueType::String,
+                        idx: 4,
+                        name: String::from("c5"),
+                        data: Value::None
+                    },
+                ]
+            },
+            line_1
+        )
     }
 
     #[test]
@@ -385,8 +538,12 @@ mod tests {
             .unwrap();
 
         let mut iter = parser.into_iter();
-        println!("{:?}", iter.next()); // headers
-        println!("{:?}", iter.next()); // line 1
+        let headers = iter.next();
+        let line_1 = iter.next();
+
+        println!("{:?}", headers);
+        println!("{:?}", line_1);
+        // TODO
     }
 
     #[test]
@@ -402,9 +559,9 @@ mod tests {
         let parser = PattiCsvParserBuilder::new()
             .first_line_is_header(true)
             .column_typings(vec![
-                TypeColumnEntry::new(Some(String::from("col1")), Value::naive_date_default()),
-                TypeColumnEntry::new(Some(String::from("col2")), Value::naive_date_time_default()),
-                TypeColumnEntry::new(Some(String::from("col3")), Value::date_time_default()),
+                TypeColumnEntry::new(Some(String::from("col1")), ValueType::NaiveDate),
+                TypeColumnEntry::new(Some(String::from("col2")), ValueType::NaiveDateTime),
+                TypeColumnEntry::new(Some(String::from("col3")), ValueType::DateTime),
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -416,6 +573,7 @@ mod tests {
 
         println!("{:?}", headers);
         println!("{:?}", line_1);
+        // TODO
     }
 
     #[test]
@@ -433,17 +591,17 @@ mod tests {
             .column_typings(vec![
                 TypeColumnEntry::new_with_chrono_pattern(
                     Some(String::from("col1")),
-                    Value::naive_date_default(),
+                    ValueType::NaiveDate,
                     String::from("%d.%m.%Y"),
                 ),
                 TypeColumnEntry::new_with_chrono_pattern(
                     Some(String::from("col2")),
-                    Value::naive_date_time_default(),
+                    ValueType::NaiveDateTime,
                     String::from("%d.%m.%Y %H_%M_%S"),
                 ),
                 TypeColumnEntry::new_with_chrono_pattern(
                     Some(String::from("col3")),
-                    Value::date_time_default(),
+                    ValueType::DateTime,
                     String::from("%d.%m.%Y %H:%M %P %z"),
                 ),
             ])
@@ -457,5 +615,6 @@ mod tests {
 
         println!("{:?}", headers);
         println!("{:?}", line_1);
+        // TODO
     }
 }
