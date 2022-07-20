@@ -183,7 +183,7 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
 #[cfg(test)]
 mod tests {
     use venum::venum::{Value, ValueType};
-    use venum_tds::{cell::DataCell, row::DataCellRow};
+    use venum_tds::{data_cell::DataCell, data_cell_row::DataCellRow};
 
     use super::*;
 

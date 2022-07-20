@@ -3,8 +3,8 @@ use std::io::Read;
 use std::marker::PhantomData;
 
 use venum::venum::{Value, ValueType};
-use venum_tds::cell::DataCell;
-use venum_tds::row::DataCellRow;
+use venum_tds::data_cell::DataCell;
+use venum_tds::data_cell_row::DataCellRow;
 
 use crate::errors::{PattiCsvError, Result};
 use crate::line_tokenizer::DelimitedLineTokenizer;
@@ -172,7 +172,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         .col_layout_template
                         .as_ref()
                         .unwrap() // This is set above, no risk in calling unwrap here!
-                        .0
+                        .0 // TODO: is there a way we don't need to rely on the underlying vec?
                         .get(i)
                         .unwrap()
                         .name;
@@ -185,7 +185,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         i,
                         header_name.clone().into(),
                     );
-                    csv_header_data_cell_row.0.push(new_csv_cell);
+                    csv_header_data_cell_row.push(new_csv_cell);
                 });
                 return Some(Ok((csv_header_data_cell_row, dlt_iter_res_stats)));
             } else {
@@ -220,7 +220,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
         };
 
-        let col_iter = row_data.0.iter_mut().enumerate();
+        let col_iter = row_data.0.iter_mut().enumerate(); // TODO: is there a way we don't need to rely on the underlying vec?
         for (i, cell) in col_iter {
             let curr_token = sanitized_tokens.get(i).unwrap();
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use venum_tds::{cell::DataCell, row::DataCellRow};
+use venum_tds::data_cell::DataCell;
+use venum_tds::data_cell_row::DataCellRow;
 
 use crate::errors::{PattiCsvError, Result, SanitizeError};
 
@@ -15,7 +16,7 @@ pub fn build_layout_template(
     match header_tokens {
         None => {
             for (idx, tce) in column_typing.iter().enumerate() {
-                csv_cell_templ_row.0.push(DataCell::new_without_data(
+                csv_cell_templ_row.push(DataCell::new_without_data(
                     tce.target_type.clone(),
                     tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to indices as header, if no real header name is given
                     idx,
@@ -29,7 +30,7 @@ pub fn build_layout_template(
             }
 
             for (idx, tce) in column_typing.iter().enumerate() {
-                csv_cell_templ_row.0.push(DataCell::new_without_data(
+                csv_cell_templ_row.push(DataCell::new_without_data(
                     tce.target_type.clone(),
                     // Either we have a header name from the typings, or the headerline.
                     // If we have no header from the typings (which is ok) and also NO
@@ -150,7 +151,7 @@ mod tests {
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new(
+        exp.push(DataCell::new(
             ValueType::String,
             "header1-from-column-typings".into(),
             0,
@@ -171,7 +172,7 @@ mod tests {
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new(
+        exp.push(DataCell::new(
             ValueType::String,
             "header1-from-header-tokens".into(),
             0,
@@ -190,7 +191,7 @@ mod tests {
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0.push(DataCell::new(
+        exp.push(DataCell::new(
             ValueType::String,
             "header1-from-column-typings".into(),
             0,
@@ -222,8 +223,7 @@ mod tests {
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.0
-            .push(DataCell::new(ValueType::String, "0".into(), 0, Value::None)); // fallback to index as header "name" (used here!)
+        exp.push(DataCell::new(ValueType::String, "0".into(), 0, Value::None)); // fallback to index as header "name" (used here!)
 
         assert_eq!(exp, res);
     }
