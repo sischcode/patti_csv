@@ -1,7 +1,5 @@
 use std::{collections::HashMap, io::Read};
 
-use venum::venum::Value;
-
 use crate::{
     conf::jsonconf::{self, *},
     errors::{PattiCsvError, Result},
@@ -95,12 +93,12 @@ impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
         match tce.src_pattern {
             Some(ref mut pattern) => TypeColumnEntry::new_with_chrono_pattern(
                 std::mem::take(&mut tce.header),
-                Value::from(&tce.target_type),
+                std::mem::take(&mut tce.target_type),
                 std::mem::take(pattern),
             ),
             None => TypeColumnEntry::new(
                 std::mem::take(&mut tce.header),
-                Value::from(&tce.target_type),
+                std::mem::take(&mut tce.target_type),
             ),
         }
     }
@@ -184,8 +182,8 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
 
 #[cfg(test)]
 mod tests {
-    use venum::venum::ValueName;
-    use venum_tds::{cell::DataCell, row::DataCellRow};
+    use venum::venum::{Value, ValueType};
+    use venum_tds::{data_cell::DataCell, data_cell_row::DataCellRow};
 
     use super::*;
 
@@ -236,20 +234,20 @@ mod tests {
 
     #[test]
     fn test_from_type_columns_entry_for_type_column_entry_no_date_type() {
-        let exp = TypeColumnEntry::new(Some(String::from("header-1")), Value::char_default());
+        let exp = TypeColumnEntry::new(Some(String::from("header-1")), ValueType::Char);
         let mut test = TypeColumnsEntry::builder()
             .with_header("header-1")
-            .build_with_target_type(ValueName::Char);
+            .build_with_target_type(ValueType::Char);
         let res = TypeColumnEntry::from(&mut test);
         assert_eq!(exp, res);
     }
 
     #[test]
     fn test_from_type_columns_entry_for_type_column_entry_date_type() {
-        let exp = TypeColumnEntry::new(Some(String::from("header-1")), Value::date_time_default());
+        let exp = TypeColumnEntry::new(Some(String::from("header-1")), ValueType::DateTime);
         let mut test = TypeColumnsEntry::builder()
             .with_header("header-1")
-            .build_with_target_type(ValueName::DateTime);
+            .build_with_target_type(ValueType::DateTime);
         let res = TypeColumnEntry::from(&mut test);
         assert_eq!(exp, res);
     }
@@ -292,20 +290,20 @@ mod tests {
                 TypeColumnsEntry::builder()
                     .with_comment("0")
                     .with_header("Header-1")
-                    .build_with_target_type(ValueName::Char),
+                    .build_with_target_type(ValueType::Char),
                 TypeColumnsEntry::builder()
                     .with_comment("1")
                     .with_header("Header-2")
-                    .build_with_target_type(ValueName::String),
+                    .build_with_target_type(ValueType::String),
                 TypeColumnsEntry::builder()
                     .with_comment("2")
                     .with_header("Header-3")
-                    .build_with_target_type(ValueName::Int8),
+                    .build_with_target_type(ValueType::Int8),
                 TypeColumnsEntry::builder()
                     .with_comment("3")
                     .with_header("Header-4")
                     .with_datetype_src_pattern("%F")
-                    .build_with_target_type(ValueName::NaiveDate),
+                    .build_with_target_type(ValueType::NaiveDate),
             ]),
         };
 
@@ -338,28 +336,28 @@ mod tests {
             DataCellRow {
                 0: vec![
                     DataCell::new(
-                        Value::string_default(),
+                        ValueType::String,
                         String::from("Header-1"),
                         0,
-                        Some(Value::String(String::from("Header-1")))
+                        Value::String(String::from("Header-1"))
                     ),
                     DataCell::new(
-                        Value::string_default(),
+                        ValueType::String,
                         String::from("Header-2"),
                         1,
-                        Some(Value::String(String::from("Header-2")))
+                        Value::String(String::from("Header-2"))
                     ),
                     DataCell::new(
-                        Value::string_default(),
+                        ValueType::String,
                         String::from("Header-3"),
                         2,
-                        Some(Value::String(String::from("Header-3")))
+                        Value::String(String::from("Header-3"))
                     ),
                     DataCell::new(
-                        Value::string_default(),
+                        ValueType::String,
                         String::from("Header-4"),
                         3,
-                        Some(Value::String(String::from("Header-4")))
+                        Value::String(String::from("Header-4"))
                     ),
                 ]
             },
@@ -370,28 +368,23 @@ mod tests {
             DataCellRow {
                 0: vec![
                     DataCell::new(
-                        Value::char_default(),
+                        ValueType::Char,
                         String::from("Header-1"),
                         0,
-                        Some(Value::Char('a'))
+                        Value::Char('a')
                     ),
                     DataCell::new(
-                        Value::string_default(),
+                        ValueType::String,
                         String::from("Header-2"),
                         1,
-                        Some(Value::String(String::from("BEE")))
+                        Value::String(String::from("BEE"))
                     ),
+                    DataCell::new(ValueType::Int8, String::from("Header-3"), 2, Value::Int8(1)),
                     DataCell::new(
-                        Value::int8_default(),
-                        String::from("Header-3"),
-                        2,
-                        Some(Value::Int8(1))
-                    ),
-                    DataCell::new(
-                        Value::naive_date_default(),
+                        ValueType::NaiveDate,
                         String::from("Header-4"),
                         3,
-                        Some(Value::parse_naive_date_from_str_iso8601_ymd("2022-01-01").unwrap())
+                        Value::parse_naive_date_from_str_iso8601_ymd("2022-01-01").unwrap()
                     ),
                 ]
             },

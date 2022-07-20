@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use venum::venum::ValueName;
+use venum::venum::ValueType;
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -88,12 +88,12 @@ pub struct SanitizeColumnsEntry {
 pub struct TypeColumnsEntry {
     pub header: Option<String>,
     pub comment: Option<String>,
-    pub target_type: ValueName,
+    pub target_type: ValueType,
     pub src_pattern: Option<String>,
 }
 
 impl TypeColumnsEntry {
-    pub fn new(target_type: ValueName) -> Self {
+    pub fn new(target_type: ValueType) -> Self {
         Self {
             header: None,
             comment: None,
@@ -109,7 +109,7 @@ impl TypeColumnsEntry {
 pub struct TypeColumnsEntryBuilder {
     pub header: Option<String>,
     pub comment: Option<String>,
-    pub target_type: Option<ValueName>, // mandatory!
+    pub target_type: Option<ValueType>, // mandatory!
     pub src_pattern: Option<String>,
 }
 impl TypeColumnsEntryBuilder {
@@ -133,7 +133,7 @@ impl TypeColumnsEntryBuilder {
         self.src_pattern = Some(String::from(pattern));
         self
     }
-    pub fn build_with_target_type(&self, target_type: ValueName) -> TypeColumnsEntry {
+    pub fn build_with_target_type(&self, target_type: ValueType) -> TypeColumnsEntry {
         TypeColumnsEntry {
             header: self.header.clone(),
             comment: self.comment.clone(),
@@ -321,7 +321,7 @@ mod tests {
             TypeColumnsEntry::builder()
                 .with_comment("0")
                 .with_header("fooheader")
-                .build_with_target_type(ValueName::Bool),
+                .build_with_target_type(ValueType::Bool),
             serde_json::from_str(data).expect("could not deserialize ")
         );
     }
@@ -339,7 +339,7 @@ mod tests {
             TypeColumnsEntry::builder()
                 .with_comment("0")
                 .with_header("fooheader")
-                .build_with_target_type(ValueName::NaiveDate),
+                .build_with_target_type(ValueType::NaiveDate),
             serde_json::from_str(data).expect("could not deserialize ")
         );
     }
@@ -359,7 +359,7 @@ mod tests {
                 .with_comment("0")
                 .with_header("fooheader")
                 .with_datetype_src_pattern("%Y-%m-%d")
-                .build_with_target_type(ValueName::NaiveDate),
+                .build_with_target_type(ValueType::NaiveDate),
             serde_json::from_str(data).expect("could not deserialize ")
         );
     }
@@ -455,20 +455,20 @@ mod tests {
                 TypeColumnsEntry::builder()
                     .with_comment("0")
                     .with_header("Header-1")
-                    .build_with_target_type(ValueName::Char),
+                    .build_with_target_type(ValueType::Char),
                 TypeColumnsEntry::builder()
                     .with_comment("1")
                     .with_header("Header-2")
-                    .build_with_target_type(ValueName::String),
+                    .build_with_target_type(ValueType::String),
                 TypeColumnsEntry::builder()
                     .with_comment("2")
                     .with_header("Header-3")
-                    .build_with_target_type(ValueName::Int8),
+                    .build_with_target_type(ValueType::Int8),
                 TypeColumnsEntry::builder()
                     .with_comment("3")
                     .with_header("Header-4")
                     .with_datetype_src_pattern("%FT%T%:z")
-                    .build_with_target_type(ValueName::DateTime),
+                    .build_with_target_type(ValueType::DateTime),
             ]),
         };
 
