@@ -226,7 +226,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
 
             if cell.dtype.is_some_date_type() && typings.chrono_pattern.is_some() {
-                cell.data = match Value::datetype_from_string_with_templ_and_chrono_pattern(
+                cell.data = match Value::datetype_from_str_and_type_and_chrono_pattern(
                     curr_token,
                     &cell.dtype,
                     typings.chrono_pattern.as_ref().unwrap(), // we already checked above
@@ -236,7 +236,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 };
             } else {
                 // Will still attempt to construct date-(time) types from the token, but only tries the specified default patterns.
-                cell.data = match Value::from_string_with_templ(curr_token, &cell.dtype) {
+                cell.data = match Value::from_str_and_type(curr_token, &cell.dtype) {
                     Ok(v) => v,
                     Err(e) => return Some(Err(e.into())),
                 };
