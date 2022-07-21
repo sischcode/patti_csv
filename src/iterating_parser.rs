@@ -96,6 +96,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
         self.column_typings = t;
         self
     }
+    // TODO: We shouldn't need the file here! Only once we turn it into an iterator
     pub fn build(&mut self, input_raw_data: &'rd mut R) -> Result<PattiCsvParser<'rd, R>> {
         if self.mandatory_column_typings && self.column_typings.is_empty() {
             return Err(PattiCsvError::Generic {

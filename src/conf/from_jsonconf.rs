@@ -104,12 +104,10 @@ impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
     }
 }
 
-impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> {
+impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
     type Error = PattiCsvError;
 
-    fn try_from(data_config_tuple: (&'rd mut R, ConfigRoot)) -> Result<Self> {
-        let (src, cfg) = data_config_tuple;
-
+    fn try_from(cfg: ConfigRoot) -> Result<Self> {
         let mut builder = PattiCsvParserBuilder::new();
         builder
             .enclosure_char(cfg.parser_opts.enclosure_char)
@@ -175,7 +173,17 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
                 .collect();
             builder.column_typings(col_typings);
         }
+        Ok(builder)
+    }
+}
 
+impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> {
+    type Error = PattiCsvError;
+
+    fn try_from(data_config_tuple: (&'rd mut R, ConfigRoot)) -> Result<Self> {
+        let (src, cfg) = data_config_tuple;
+
+        let mut builder: PattiCsvParserBuilder<R> = PattiCsvParserBuilder::try_from(cfg)?;
         builder.build(src)
     }
 }
