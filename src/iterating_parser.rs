@@ -227,19 +227,40 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
 
             if cell.dtype.is_some_date_type() && typings.chrono_pattern.is_some() {
+                // TODO: remove duplication here
                 cell.data = match Value::datetype_from_str_and_type_and_chrono_pattern(
                     curr_token,
                     &cell.dtype,
                     typings.chrono_pattern.as_ref().unwrap(), // we already checked above
                 ) {
                     Ok(v) => v,
-                    Err(e) => return Some(Err(e.into())),
+                    Err(e) => {
+                        return Some(Err(PattiCsvError::Generic {
+                            msg: format!(
+                                "{:?}; line: {}; column: {}; header: {}",
+                                e,
+                                &dlt_iter_res_stats.curr_line_num,
+                                &i,
+                                &row_data.0.get(i).unwrap().get_name()
+                            ),
+                        }))
+                    }
                 };
             } else {
                 // Will still attempt to construct date-(time) types from the token, but only tries the specified default patterns.
                 cell.data = match Value::from_str_and_type(curr_token, &cell.dtype) {
                     Ok(v) => v,
-                    Err(e) => return Some(Err(e.into())),
+                    Err(e) => {
+                        return Some(Err(PattiCsvError::Generic {
+                            msg: format!(
+                                "{:?}; line: {}; column: {}; header: {}",
+                                e,
+                                &dlt_iter_res_stats.curr_line_num,
+                                &i,
+                                &row_data.0.get(i).unwrap().get_name()
+                            ),
+                        }))
+                    }
                 };
             }
         }
