@@ -126,6 +126,8 @@ pub fn sanitize_tokenizer_iter_res(
 
     // Apply sanitization and escaping / enclosure
     for (i, token) in line_tokens.into_iter().enumerate() {
+        // On first glance, borrowing and transforming inplace is smarter, however, all the transformations we use, allocate a
+        // new String anyway, so it doesn't make much sense.
         let sanitized_token = sanitize_token(token, column_transitizers, line_number, i)?;
         ret.push(sanitized_token);
     }

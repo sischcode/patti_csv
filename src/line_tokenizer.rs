@@ -1,3 +1,4 @@
+use compact_str::CompactString;
 use std::io::{BufRead, BufReader, Read};
 
 use crate::errors::{PattiCsvError, Result, TokenizerError};
@@ -43,6 +44,7 @@ impl Default for DelimitedLineTokenizerStats {
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     num_tokens_exp_set: bool,
     num_tokens_exp: usize,
+    max_inline_str_size: usize,
     buf_raw_data: BufReader<&'rd mut R>,
     pub delim_char: char,
     pub encl_char: Option<char>,
@@ -64,6 +66,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         DelimitedLineTokenizer {
             num_tokens_exp_set: false,
             num_tokens_exp: 10, // DEFAULT
+            max_inline_str_size: std::mem::size_of::<String>(),
             buf_raw_data: BufReader::new(raw_data),
             delim_char: delim,
             encl_char: enclc,
@@ -99,7 +102,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
     /// line_num is only used for error context
     fn tokenize(&mut self, line_num: usize, s: &str) -> Result<Vec<String>> {
         let mut state = State::Start;
-        let mut data: Vec<String> = Vec::with_capacity(self.num_tokens_exp);
+        let mut data: Vec<CompactString> = Vec::with_capacity(self.num_tokens_exp);
 
         // A small FSM here...
         for c in s.chars() {
@@ -107,17 +110,20 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
                 State::Start | State::Scan => match c {
                     _ if c == self.delim_char => {
                         // this means: empty field at start
-                        data.push("".to_string());
+                        data.push(CompactString::with_capacity(self.max_inline_str_size));
                         State::Scan
                     }
                     _ if Some(c) == self.encl_char => {
                         // enclosure symbol (start) found
-                        data.push("".to_string());
+                        data.push(CompactString::with_capacity(self.max_inline_str_size));
                         State::QuotedField
                     }
                     _ => {
                         // start of regular, un-enclosed field
-                        data.push(c.to_string());
+                        let mut cs = CompactString::with_capacity(self.max_inline_str_size);
+                        cs.push(c);
+
+                        data.push(cs);
                         State::Field
                     }
                 },
@@ -166,7 +172,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         //    we'd need to end on State:QuoteInQuotedField instead.
         match state {
             State::Scan => {
-                data.push("".to_string());
+                data.push(CompactString::new(""));
             }
             State::QuotedField => {
                 return Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
@@ -183,7 +189,10 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
             self.num_tokens_exp_set = true;
         }
 
-        Ok(data)
+        Ok(data
+            .iter()
+            .map(|t| String::from(t.as_str()))
+            .collect::<Vec<String>>())
     }
 }
 
