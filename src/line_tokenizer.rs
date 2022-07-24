@@ -42,9 +42,9 @@ impl Default for DelimitedLineTokenizerStats {
 }
 
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
-    num_tokens_exp_set: bool,
-    num_tokens_exp: usize,
-    max_inline_str_size: usize,
+    num_tokens_exp_set: bool, // used as internal info to indicate if the num_tokens_exp has already been set. This is only done once!
+    num_tokens_exp: usize, // number of tokens in a line/row, we expect, based on the first line (usually the header), is has parsed.
+    max_inline_str_size: usize, // helper for compact string. Since we're not that concerned with space limitations, we allocate the max a compact string can allocate on the stack
     buf_raw_data: BufReader<&'rd mut R>,
     pub delim_char: char,
     pub encl_char: Option<char>,
