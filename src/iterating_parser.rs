@@ -126,7 +126,13 @@ impl<R: Read> Default for PattiCsvParserBuilder<R> {
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     patti_csv_parser: PattiCsvParser<'rd, R>,
-    col_layout_template: Option<DataCellRow>,
+    column_layout_template: Option<DataCellRow>,
+}
+
+impl<'rd, R: Read> PattiCsvParserIterator<'rd, R> {
+    pub fn first_line_is_header(&self) -> bool {
+        self.patti_csv_parser.first_line_is_header
+    }
 }
 
 impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
@@ -155,7 +161,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             // If this is the case, we need to set the correct headers in our template, then return
             // the data as the first line.
             if self.patti_csv_parser.first_line_is_header {
-                self.col_layout_template = match build_layout_template(
+                self.column_layout_template = match build_layout_template(
                     Some(&dlt_iter_res_vec),
                     &self.patti_csv_parser.column_typings,
                 ) {
@@ -171,12 +177,12 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     // We have set the correct header-name above anyway, we can just use it here!
                     // All we really care about here is, that we default the type to String.
                     let header_name = &self
-                        .col_layout_template
+                        .column_layout_template
                         .as_ref()
                         .unwrap() // This is set above, no risk in calling unwrap here!
                         .0 // TODO: is there a way we don't need to rely on the underlying vec?
                         .get(i)
-                        .unwrap()
+                        .unwrap() // When we are here, we know we already successfully set it
                         .name;
 
                     // TODO: do we want transitization on the headers!?
@@ -195,7 +201,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 // structure, without parsing and setting the headers.
                 // We do not(!) return this immediately as the first line, since we must first sanitize
                 // and then type the data.
-                self.col_layout_template =
+                self.column_layout_template =
                     match build_layout_template(None, &self.patti_csv_parser.column_typings) {
                         Ok(v) => Some(v),
                         Err(e) => return Some(Err(e)),
@@ -204,7 +210,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         }
 
         // Shared logic for all data, or non-header lines
-        let mut row_data: DataCellRow = match self.col_layout_template.clone() {
+        let mut row_data: DataCellRow = match self.column_layout_template.clone() {
             Some(v) => v,
             None => {
                 return Some(Err(PattiCsvError::Generic {
@@ -261,7 +267,7 @@ impl<'rd, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
     fn into_iter(self) -> Self::IntoIter {
         PattiCsvParserIterator {
             patti_csv_parser: self,
-            col_layout_template: None,
+            column_layout_template: None,
         }
     }
 }
