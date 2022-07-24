@@ -65,7 +65,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
     ) -> Self {
         DelimitedLineTokenizer {
             num_tokens_exp_set: false,
-            num_tokens_exp: 10, // DEFAULT
+            num_tokens_exp: 15, // we set the initial value to 15, because...we gotta start with something ¯\_(ツ)_/¯
             max_inline_str_size: std::mem::size_of::<String>(),
             buf_raw_data: BufReader::new(raw_data),
             delim_char: delim,
