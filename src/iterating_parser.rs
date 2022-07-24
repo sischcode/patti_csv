@@ -59,7 +59,6 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             mandatory_column_typings: false,
             column_typings: Vec::new(),
             phantom: PhantomData::default(),
-            // TODO: handling of empty-string, null and null-like string values and their mapping to Value::None. I.e. config what should be mapped to Value::None and what not
         }
     }
     pub fn separator_char(&mut self, c: char) -> &mut PattiCsvParserBuilder<R> {
@@ -96,7 +95,9 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
         self.column_typings = t;
         self
     }
-    // TODO: We shouldn't need the file here! Only once we turn it into an iterator
+    /// For simplicity sake we consume the builder. We also want the input / csv-source file here
+    /// already. We accept this for know, since we have to create a new parser for every parsing
+    /// action anyway since we...consume the config during creation of the parser.
     pub fn build(&mut self, input_raw_data: &'rd mut R) -> Result<PattiCsvParser<'rd, R>> {
         if self.mandatory_column_typings && self.column_typings.is_empty() {
             return Err(PattiCsvError::Generic {
@@ -229,11 +230,11 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             cell.data = match Value::from_str_and_type_with_chrono_pattern_with_none_map(
                 curr_token,
                 &cell.dtype,
-                typings.chrono_pattern.as_ref().map(|e| e.as_str()), // we already checked above // TODO
+                typings.chrono_pattern.as_ref().map(|e| e.as_str()), // we already checked above
                 typings
                     .map_to_none
                     .as_ref()
-                    .map(|e| e.iter().map(|ie| ie.as_str()).collect()), // we really should be using a Vec<&str> here // TODO
+                    .map(|e| e.iter().map(|ie| ie.as_str()).collect()), // TODO we really should be using a Vec<&str> here?
             ) {
                 Ok(v) => v,
                 Err(e) => {
