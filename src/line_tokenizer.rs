@@ -41,6 +41,8 @@ impl Default for DelimitedLineTokenizerStats {
 }
 
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
+    num_tokens_exp_set: bool,
+    num_tokens_exp: usize,
     buf_raw_data: BufReader<&'rd mut R>,
     pub delim_char: char,
     pub encl_char: Option<char>,
@@ -60,6 +62,8 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
     ) -> Self {
         DelimitedLineTokenizer {
+            num_tokens_exp_set: false,
+            num_tokens_exp: 10, // DEFAULT
             buf_raw_data: BufReader::new(raw_data),
             delim_char: delim,
             encl_char: enclc,
@@ -93,9 +97,9 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
     }
 
     /// line_num is only used for error context
-    fn tokenize(&self, line_num: usize, s: &str) -> Result<Vec<String>> {
+    fn tokenize(&mut self, line_num: usize, s: &str) -> Result<Vec<String>> {
         let mut state = State::Start;
-        let mut data: Vec<String> = Vec::new();
+        let mut data: Vec<String> = Vec::with_capacity(self.num_tokens_exp);
 
         // A small FSM here...
         for c in s.chars() {
@@ -172,6 +176,13 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
             }
             _ => (),
         }
+
+        // After the first real line, we adjust the (future) length of the vec we allocate
+        if !self.num_tokens_exp_set {
+            self.num_tokens_exp = data.len();
+            self.num_tokens_exp_set = true;
+        }
+
         Ok(data)
     }
 }
