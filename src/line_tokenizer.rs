@@ -40,7 +40,6 @@ impl Default for DelimitedLineTokenizerStats {
     }
 }
 
-// TODO: We shouldn't need the file here! Only once we turn it into an iterator
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     buf_raw_data: BufReader<&'rd mut R>,
     pub delim_char: char,
