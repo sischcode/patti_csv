@@ -90,15 +90,28 @@ impl TryFrom<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTok
 
 impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
     fn from(tce: &mut TypeColumnsEntry) -> Self {
-        match tce.src_pattern {
-            Some(ref mut pattern) => TypeColumnEntry::new_with_chrono_pattern(
+        let src_pattern = tce.src_pattern.as_mut();
+        let map_to_none = tce.map_to_none.as_mut();
+        match (&src_pattern, &map_to_none) {
+            (None, None) => TypeColumnEntry::new(
                 std::mem::take(&mut tce.header),
                 std::mem::take(&mut tce.target_type),
-                std::mem::take(pattern),
             ),
-            None => TypeColumnEntry::new(
+            (None, Some(_)) => TypeColumnEntry::new_with_map_to_none(
                 std::mem::take(&mut tce.header),
                 std::mem::take(&mut tce.target_type),
+                std::mem::take(map_to_none.unwrap()), // checked in match
+            ),
+            (Some(_), None) => TypeColumnEntry::new_with_chrono_pattern(
+                std::mem::take(&mut tce.header),
+                std::mem::take(&mut tce.target_type),
+                std::mem::take(src_pattern.unwrap()), // checked in match
+            ),
+            (Some(_), Some(_)) => TypeColumnEntry::new_with_chrono_pattern_with_map_to_none(
+                std::mem::take(&mut tce.header),
+                std::mem::take(&mut tce.target_type),
+                std::mem::take(src_pattern.unwrap()), // checked in match
+                std::mem::take(map_to_none.unwrap()), // checked in match
             ),
         }
     }

@@ -90,6 +90,7 @@ pub struct TypeColumnsEntry {
     pub comment: Option<String>,
     pub target_type: ValueType,
     pub src_pattern: Option<String>,
+    pub map_to_none: Option<Vec<String>>,
 }
 
 impl TypeColumnsEntry {
@@ -99,6 +100,7 @@ impl TypeColumnsEntry {
             comment: None,
             target_type,
             src_pattern: None,
+            map_to_none: None,
         }
     }
     pub fn builder() -> TypeColumnsEntryBuilder {
@@ -111,6 +113,7 @@ pub struct TypeColumnsEntryBuilder {
     pub comment: Option<String>,
     pub target_type: Option<ValueType>, // mandatory!
     pub src_pattern: Option<String>,
+    pub map_to_none: Option<Vec<String>>,
 }
 impl TypeColumnsEntryBuilder {
     pub fn new() -> Self {
@@ -119,6 +122,7 @@ impl TypeColumnsEntryBuilder {
             comment: None,
             target_type: None,
             src_pattern: None,
+            map_to_none: None,
         }
     }
     pub fn with_header(&mut self, header: &str) -> &mut Self {
@@ -133,12 +137,17 @@ impl TypeColumnsEntryBuilder {
         self.src_pattern = Some(String::from(pattern));
         self
     }
-    pub fn build_with_target_type(&self, target_type: ValueType) -> TypeColumnsEntry {
+    pub fn with_map_to_none(&mut self, map_to_none: Vec<String>) -> &mut Self {
+        self.map_to_none = Some(map_to_none);
+        self
+    }
+    pub fn build_with_target_type(&mut self, target_type: ValueType) -> TypeColumnsEntry {
         TypeColumnsEntry {
-            header: self.header.clone(),
-            comment: self.comment.clone(),
+            header: std::mem::take(&mut self.header),
+            comment: std::mem::take(&mut self.comment),
             target_type,
-            src_pattern: self.src_pattern.clone(),
+            src_pattern: std::mem::take(&mut self.src_pattern),
+            map_to_none: std::mem::take(&mut self.map_to_none),
         }
     }
 }

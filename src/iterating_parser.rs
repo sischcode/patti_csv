@@ -226,43 +226,28 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             let curr_token = sanitized_tokens.get(i).unwrap();
             let typings = self.patti_csv_parser.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
 
-            if cell.dtype.is_some_date_type() && typings.chrono_pattern.is_some() {
-                // TODO: remove duplication here
-                cell.data = match Value::datetype_from_str_and_type_and_chrono_pattern(
-                    curr_token,
-                    &cell.dtype,
-                    typings.chrono_pattern.as_ref().unwrap(), // we already checked above
-                ) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Some(Err(PattiCsvError::Generic {
-                            msg: format!(
-                                "{:?}; line: {}; column: {}; header: {}",
-                                e,
-                                &dlt_iter_res_stats.curr_line_num,
-                                &i,
-                                &row_data.0.get(i).unwrap().get_name()
-                            ),
-                        }))
-                    }
-                };
-            } else {
-                // Will still attempt to construct date-(time) types from the token, but only tries the specified default patterns.
-                cell.data = match Value::from_str_and_type(curr_token, &cell.dtype) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Some(Err(PattiCsvError::Generic {
-                            msg: format!(
-                                "{:?}; line: {}; column: {}; header: {}",
-                                e,
-                                &dlt_iter_res_stats.curr_line_num,
-                                &i,
-                                &row_data.0.get(i).unwrap().get_name()
-                            ),
-                        }))
-                    }
-                };
-            }
+            cell.data = match Value::from_str_and_type_with_chrono_pattern_with_none_map(
+                curr_token,
+                &cell.dtype,
+                typings.chrono_pattern.as_ref().map(|e| e.as_str()), // we already checked above // TODO
+                typings
+                    .map_to_none
+                    .as_ref()
+                    .map(|e| e.iter().map(|ie| ie.as_str()).collect()), // we really should be using a Vec<&str> here // TODO
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    return Some(Err(PattiCsvError::Generic {
+                        msg: format!(
+                            "{:?}; line: {}; column: {}; header: {}",
+                            e,
+                            &dlt_iter_res_stats.curr_line_num,
+                            &i,
+                            &row_data.0.get(i).unwrap().get_name()
+                        ),
+                    }))
+                }
+            };
         }
         Some(Ok((row_data, dlt_iter_res_stats)))
     }
@@ -347,8 +332,12 @@ mod tests {
                 TypeColumnEntry::new(None, ValueType::Int32),
                 TypeColumnEntry::new(Some(String::from("col2")), ValueType::String),
                 TypeColumnEntry::new(Some(String::from("col3")), ValueType::Bool),
-                TypeColumnEntry::new(Some(String::from("col4")), ValueType::String),
-                TypeColumnEntry::new(None, ValueType::Int32),
+                TypeColumnEntry::new_with_map_to_none(
+                    Some(String::from("col4")),
+                    ValueType::String,
+                    vec![String::from("null")],
+                ),
+                TypeColumnEntry::new(None, ValueType::Int32), // Empty String will automatically(!) be mapped to Value::None!
             ])
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
@@ -522,7 +511,7 @@ mod tests {
                         dtype: ValueType::String,
                         idx: 3,
                         name: String::from("c4"),
-                        data: Value::None
+                        data: Value::String(String::from("null")) // we do NOT map "special" strings like "null" automatically
                     },
                     DataCell {
                         dtype: ValueType::String,
