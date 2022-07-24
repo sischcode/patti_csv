@@ -1,4 +1,8 @@
-use std::{collections::HashMap, io::Read};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader, Read},
+};
 
 use crate::{
     conf::jsonconf::{self, *},
@@ -150,14 +154,9 @@ impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
             if let Some(v) = skip_take_lines_cfg.skip_lines_from_start {
                 skip_take_lines.push(Box::new(SkipLinesFromStart { skip_num_lines: v }));
             }
-            if let Some(v) = skip_take_lines_cfg.skip_lines_from_end {
-                // let reader = BufReader::new(src);
-                // let lines_total = reader.lines().count();
-
-                skip_take_lines.push(Box::new(SkipLinesFromEnd {
-                    skip_num_lines: v,
-                    lines_total: 0, // TODO: !!!
-                }))
+            if let Some(_) = skip_take_lines_cfg.skip_lines_from_end {
+                return Err(PattiCsvError::Generic { msg: String::from("skipLinesFromEnd / skip_lines_from_end only works for R:Read = File, which we cannot guarantee here. Try 'patti_csv_file_parser_from' instead.") });
+                // TODO is there a better way?
             }
             if let Some(mut v) = skip_take_lines_cfg.skip_lines_by_startswith {
                 v.iter_mut().for_each(|e| {
@@ -197,8 +196,85 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
         let (src, cfg) = data_config_tuple;
 
         let mut builder: PattiCsvParserBuilder<R> = PattiCsvParserBuilder::try_from(cfg)?;
+
         builder.build(src)
     }
+}
+
+// TODO: there is currently a LOT of duplication here. See the upper: impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R>
+// I haven't figured out yet how to "split" between Instances that impl Read and are NOT a file, and those that are.
+pub fn patti_csv_file_parser_from<'rd>(
+    cfg: ConfigRoot,
+    f: &'rd mut File,
+) -> Result<PattiCsvParser<'rd, File>> {
+    let mut builder: PattiCsvParserBuilder<File> = PattiCsvParserBuilder::new();
+    builder
+        .enclosure_char(cfg.parser_opts.enclosure_char)
+        .separator_char(cfg.parser_opts.separator_char)
+        .first_line_is_header(cfg.parser_opts.first_line_is_header);
+
+    if let Some(mut san) = cfg.sanitize_columns {
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+
+        san.iter_mut().try_for_each(|e| -> Result<()> {
+            let f: (Option<usize>, TransformSanitizeTokens) = e.try_into()?;
+            transitizers.insert(f.0, f.1);
+            Ok(())
+        })?;
+
+        if !transitizers.is_empty() {
+            builder.column_transitizers(transitizers);
+        }
+    }
+
+    if let Some(skip_take_lines_cfg) = cfg.parser_opts.lines {
+        let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
+
+        if let Some(true) = skip_take_lines_cfg.skip_empty_lines {
+            skip_take_lines.push(Box::new(SkipEmptyLines {}));
+        }
+        if let Some(v) = skip_take_lines_cfg.skip_lines_from_start {
+            skip_take_lines.push(Box::new(SkipLinesFromStart { skip_num_lines: v }));
+        }
+        if let Some(v) = skip_take_lines_cfg.skip_lines_from_end {
+            let f_clone = f.try_clone().map_err(|e| PattiCsvError::Generic {
+                msg: format!("{e}"),
+            })?;
+
+            skip_take_lines.push(Box::new(SkipLinesFromEnd {
+                skip_num_lines: v,
+                lines_total: BufReader::new(f_clone).lines().count(),
+            }))
+        }
+        if let Some(mut v) = skip_take_lines_cfg.skip_lines_by_startswith {
+            v.iter_mut().for_each(|e| {
+                skip_take_lines.push(Box::new(SkipLinesStartingWith {
+                    starts_with: std::mem::take(e),
+                }))
+            });
+        }
+        if let Some(mut v) = skip_take_lines_cfg.take_lines_by_startswith {
+            v.iter_mut().for_each(|e| {
+                skip_take_lines.push(Box::new(TakeLinesStartingWith {
+                    starts_with: std::mem::take(e),
+                }))
+            });
+        }
+
+        if !skip_take_lines.is_empty() {
+            builder.skip_take_lines_fns(skip_take_lines);
+        }
+    }
+
+    if let Some(mut col_typings_cfg) = cfg.type_columns {
+        let col_typings = col_typings_cfg
+            .iter_mut()
+            .map(TypeColumnEntry::from)
+            .collect();
+        builder.column_typings(col_typings);
+    }
+
+    builder.build(f)
 }
 
 #[cfg(test)]
