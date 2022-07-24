@@ -15,6 +15,7 @@ venum_tds = { path = "../venum_tds", version = "0.1.0" }
 regex = "1.5"
 thiserror = "1.0"
 strum_macros = "0.24"
+compact_str = "0.5.1"
 
 # These two are behind the (implicit) features: "dep:serde" and "dep:serde_json".
 serde = { version = "1.0", features = ["derive"], optional = true}
