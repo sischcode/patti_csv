@@ -1,5 +1,6 @@
 pub trait SkipTakeLines {
     fn skip(&self, line_num: Option<usize>, line_content: Option<&str>) -> bool;
+    fn get_self_info(&self) -> String;
 }
 
 #[derive(Debug)]
@@ -12,6 +13,9 @@ impl SkipTakeLines for SkipLinesFromStart {
             Some(ln) => ln <= self.skip_num_lines,
             None => false,
         }
+    }
+    fn get_self_info(&self) -> String {
+        format!("{self:?}")
     }
 }
 
@@ -27,6 +31,9 @@ impl SkipTakeLines for SkipLinesFromEnd {
             None => false,
         }
     }
+    fn get_self_info(&self) -> String {
+        format!("{self:?}")
+    }
 }
 
 #[derive(Debug)]
@@ -39,6 +46,9 @@ impl SkipTakeLines for SkipLinesStartingWith {
             Some(c) => c.starts_with(&self.starts_with),
             None => false,
         }
+    }
+    fn get_self_info(&self) -> String {
+        format!("{self:?}")
     }
 }
 
@@ -53,6 +63,9 @@ impl SkipTakeLines for TakeLinesStartingWith {
             None => false,
         }
     }
+    fn get_self_info(&self) -> String {
+        format!("{self:?}")
+    }
 }
 
 #[derive(Debug)]
@@ -63,6 +76,9 @@ impl SkipTakeLines for SkipEmptyLines {
             Some(c) => c.eq("\n") || c.eq("\r\n"), // nothing there besides newline
             None => false,
         }
+    }
+    fn get_self_info(&self) -> String {
+        format!("{self:?}")
     }
 }
 

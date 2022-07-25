@@ -43,6 +43,7 @@ where
     enclosure_char: Option<char>,
     first_line_is_header: bool,
     skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
+    save_skipped_lines: bool,
     column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
     mandatory_column_typings: bool,
     column_typings: Vec<TypeColumnEntry>,
@@ -54,6 +55,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             separator_char: ',',
             enclosure_char: Some('"'),
             first_line_is_header: true,
+            save_skipped_lines: false,
             skip_take_lines_fns: None,
             column_transitizers: None,
             mandatory_column_typings: false,
@@ -71,6 +73,10 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
     }
     pub fn first_line_is_header(&mut self, b: bool) -> &mut PattiCsvParserBuilder<R> {
         self.first_line_is_header = b;
+        self
+    }
+    pub fn save_skipped_lines(&mut self, b: bool) -> &mut PattiCsvParserBuilder<R> {
+        self.save_skipped_lines = b;
         self
     }
     pub fn skip_take_lines_fns(
@@ -113,6 +119,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
                 self.separator_char,
                 self.enclosure_char,
                 std::mem::take(&mut self.skip_take_lines_fns),
+                self.save_skipped_lines,
             ),
         })
     }
@@ -145,6 +152,8 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             Err(e) => return Some(Err(e)),
             Ok(dlt_iter_res) => dlt_iter_res,
         };
+
+        let foo = self.patti_csv_parser.dlt_iter.skipped_lines.as_ref();
 
         // Special case for the first line, which might be a header line and must be treated differently.
         if dlt_iter_res_stats.is_at_first_line_to_parse() {
@@ -552,6 +561,40 @@ mod tests {
                     lines_total: 5,
                 }),
             ])
+            .column_transitizers(transitizers)
+            .build(&mut test_data_cursor)
+            .unwrap();
+
+        let mut iter = parser.into_iter();
+        let headers = iter.next();
+        let line_1 = iter.next();
+
+        println!("{:?}", headers);
+        println!("{:?}", line_1);
+        // TODO
+    }
+
+    #[test]
+    fn test_parser_skip_comments_and_summation_lines_save_skipped() {
+        let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
+
+        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        transitizers.insert(None, vec![Box::new(ToLowercase)]);
+        transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
+
+        let parser = PattiCsvParserBuilder::new()
+            .first_line_is_header(true)
+            .mandatory_column_typings(false)
+            .skip_take_lines_fns(vec![
+                Box::new(SkipLinesStartingWith {
+                    starts_with: String::from("#"),
+                }),
+                Box::new(SkipLinesFromEnd {
+                    skip_num_lines: 1,
+                    lines_total: 5,
+                }),
+            ])
+            .save_skipped_lines(true)
             .column_transitizers(transitizers)
             .build(&mut test_data_cursor)
             .unwrap();
