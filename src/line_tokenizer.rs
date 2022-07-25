@@ -44,6 +44,7 @@ impl Default for DelimitedLineTokenizerStats {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct SkippedLineInfo(String, String);
 impl SkippedLineInfo {
     pub fn skipped_by(&self) -> &String {
@@ -58,8 +59,8 @@ pub struct DelimitedLineTokenizer<'rd, R: Read> {
     num_tokens_exp_set: bool, // used as internal info to indicate if the num_tokens_exp has already been set. This is only done once!
     num_tokens_exp: usize, // number of tokens in a line/row, we expect, based on the first line (usually the header), is has parsed.
     max_inline_str_size: usize, // helper for compact string. Since we're not that concerned with space limitations, we allocate the max a compact string can allocate on the stack
-    buf_raw_data: BufReader<&'rd mut R>,
     save_skipped_lines: bool,
+    buf_raw_data: BufReader<&'rd mut R>,
     pub delim_char: char,
     pub encl_char: Option<char>,
     pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
@@ -83,8 +84,8 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
             num_tokens_exp_set: false,
             num_tokens_exp: 15, // we set the initial value to 15, because...we gotta start with something ¯\_(ツ)_/¯
             max_inline_str_size: std::mem::size_of::<String>(),
-            buf_raw_data: BufReader::new(raw_data),
             save_skipped_lines,
+            buf_raw_data: BufReader::new(raw_data),
             delim_char: delim,
             encl_char: enclc,
             skip_take_lines_fns,
@@ -224,7 +225,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
             _ => (),
         }
 
-        // After the first real line, we adjust the (future) length of the vec we allocate
+        // // After the first real line, we adjust the (future) length of the vec we allocate
         if !self.num_tokens_exp_set {
             self.num_tokens_exp = data.len();
             self.num_tokens_exp_set = true;
@@ -237,7 +238,25 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
     }
 }
 
-impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
+pub struct DelimitedLineTokenizerIter<'rd, R: Read> {
+    dlt: DelimitedLineTokenizer<'rd, R>,
+    stats: DelimitedLineTokenizerStats,
+    skipped_lines: Option<HashMap<usize, SkippedLineInfo>>,
+}
+
+impl<'rd, R: Read> DelimitedLineTokenizerIter<'rd, R> {
+    pub fn get_skipped_lines(&self) -> &Option<HashMap<usize, SkippedLineInfo>> {
+        &self.skipped_lines
+    }
+    pub fn get_delim_char(&self) -> char {
+        self.dlt.delim_char
+    }
+    pub fn get_encl_char(&self) -> Option<char> {
+        self.dlt.encl_char.clone()
+    }
+}
+
+impl<'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'rd, R> {
     type Item = Result<(Vec<String>, DelimitedLineTokenizerStats)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -248,7 +267,7 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
             line = String::new();
 
             self.stats.curr_line_num += 1;
-            let bytes_read = match self.buf_raw_data.read_line(&mut line) {
+            let bytes_read = match self.dlt.buf_raw_data.read_line(&mut line) {
                 Ok(num_bytes) => match num_bytes {
                     _ if num_bytes == 0_usize => return None, // returns "normal", i.e. end of "stream". ('return' always returns from a funtion!)
                     _ => Some(num_bytes),
@@ -260,8 +279,9 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
             };
             self.stats.bytes_read += bytes_read.unwrap(); // unwrap is OK here, we checked every other path
 
-            let (skip_this_line_tmp, skipped_by_info) =
-                self.skip_line_by_skiptake_sanitizer(self.stats.curr_line_num, &line);
+            let (skip_this_line_tmp, skipped_by_info) = self
+                .dlt
+                .skip_line_by_skiptake_sanitizer(self.stats.curr_line_num, &line);
             skip_this_line = skip_this_line_tmp;
 
             if skip_this_line {
@@ -269,7 +289,7 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
                 self.stats.skipped_lines.push(self.stats.curr_line_num);
 
                 // additional info, only when configured
-                if self.save_skipped_lines {
+                if self.dlt.save_skipped_lines {
                     if self.skipped_lines.is_none() {
                         self.skipped_lines =
                             Some(HashMap::<usize, SkippedLineInfo>::with_capacity(1));
@@ -285,9 +305,22 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizer<'rd, R> {
         }
         self.stats.lines_parsed += 1;
 
-        match self.tokenize(self.stats.curr_line_num, line.trim_end()) {
+        match self.dlt.tokenize(self.stats.curr_line_num, line.trim_end()) {
             Ok(v) => Some(Ok((v, self.stats.clone()))),
             Err(e) => Some(Err(e)),
+        }
+    }
+}
+
+impl<'rd, R: Read> IntoIterator for DelimitedLineTokenizer<'rd, R> {
+    type Item = Result<(Vec<String>, DelimitedLineTokenizerStats)>;
+    type IntoIter = DelimitedLineTokenizerIter<'rd, R>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        DelimitedLineTokenizerIter {
+            dlt: self,
+            stats: DelimitedLineTokenizerStats::default(),
+            skipped_lines: None,
         }
     }
 }

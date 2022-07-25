@@ -211,7 +211,8 @@ pub fn patti_csv_file_parser_from<'rd>(
     builder
         .enclosure_char(cfg.parser_opts.enclosure_char)
         .separator_char(cfg.parser_opts.separator_char)
-        .first_line_is_header(cfg.parser_opts.first_line_is_header);
+        .first_line_is_header(cfg.parser_opts.first_line_is_header)
+        .save_skipped_lines(cfg.parser_opts.save_skipped_lines);
 
     if let Some(mut san) = cfg.sanitize_columns {
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
@@ -359,13 +360,14 @@ mod tests {
                 enclosure_char: Some('"'),
                 lines: Some(ParserOptLines {
                     comment: None,
-                    skip_lines_from_start: Some(1 as usize),
+                    skip_lines_from_start: Some(1_usize),
                     skip_empty_lines: Some(true),
                     skip_lines_by_startswith: Some(vec![String::from("#"), String::from("-")]),
                     take_lines_by_startswith: None,
                     skip_lines_from_end: None,
                 }),
                 first_line_is_header: true,
+                save_skipped_lines: false,
             },
             sanitize_columns: Some(vec![
                 SanitizeColumnsEntry {
