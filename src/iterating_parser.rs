@@ -159,6 +159,9 @@ impl<'rd, R: Read> PattiCsvParserIterator<'rd, R> {
             None => None,
         }
     }
+    pub fn save_skipped_lines(&self) -> bool {
+        self.pcp.dlt_iter.save_skipped_lines()
+    }
     pub fn first_line_is_header(&self) -> bool {
         self.pcp.first_line_is_header()
     }

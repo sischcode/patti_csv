@@ -130,7 +130,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
                 .map(|filter| {
                     (
                         filter.skip(Some(line_counter), Some(line)),
-                        Some(filter.get_self_info()),
+                        Some(filter.get_self_info()), // TODO: bad for performance?
                     )
                 }) // check line against every sanitizer
                 .find(|(res, _info)| *res) // if at least one yields true, we need to skip (this line)
@@ -245,6 +245,9 @@ pub struct DelimitedLineTokenizerIter<'rd, R: Read> {
 }
 
 impl<'rd, R: Read> DelimitedLineTokenizerIter<'rd, R> {
+    pub fn save_skipped_lines(&self) -> bool {
+        *(&self.dlt.save_skipped_lines)
+    }
     pub fn get_skipped_lines(&self) -> &Option<HashMap<usize, SkippedLineInfo>> {
         &self.skipped_lines
     }
