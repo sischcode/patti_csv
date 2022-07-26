@@ -9,7 +9,6 @@ use venum_tds::data_cell_row::DataCellRow;
 use crate::errors::{PattiCsvError, Result};
 use crate::line_tokenizer::{
     DelimitedLineTokenizer, DelimitedLineTokenizerIter, DelimitedLineTokenizerStats,
-    SkippedLineInfo,
 };
 
 use super::parser_common::{build_layout_template, sanitize_tokenizer_iter_res};
@@ -34,7 +33,7 @@ impl<'rd, R: Read> PattiCsvParser<'rd, R> {
     pub fn builder() -> PattiCsvParserBuilder<R> {
         PattiCsvParserBuilder::new()
     }
-    pub fn get_skipped_lines(&self) -> &Option<HashMap<usize, SkippedLineInfo>> {
+    pub fn get_skipped_lines(&self) -> &Vec<(usize, String)> {
         self.dlt_iter.get_skipped_lines()
     }
     pub fn first_line_is_header(&self) -> bool {
@@ -148,16 +147,16 @@ impl<R: Read> Default for PattiCsvParserBuilder<R> {
 
 pub struct PattiCsvParserIterator<'rd, R: Read> {
     pcp: PattiCsvParser<'rd, R>,
-    column_layout_template: Option<DataCellRow>,
+    column_layout_template: DataCellRow,
 }
 
 impl<'rd, R: Read> PattiCsvParserIterator<'rd, R> {
     // For now, we clone everytime this gets called. This is not optimal, but usually only done, once, at the end.
-    pub fn get_skipped_lines(&self) -> Option<HashMap<usize, SkippedLineInfo>> {
-        match self.pcp.get_skipped_lines() {
-            Some(hm) => Some(hm.clone()),
-            None => None,
-        }
+    pub fn get_skipped_lines(&self) -> &Vec<(usize, String)> {
+        self.pcp.get_skipped_lines()
+    }
+    pub fn get_stats(&self) -> &DelimitedLineTokenizerStats {
+        self.pcp.dlt_iter.get_stats()
     }
     pub fn save_skipped_lines(&self) -> bool {
         self.pcp.dlt_iter.save_skipped_lines()
@@ -168,18 +167,18 @@ impl<'rd, R: Read> PattiCsvParserIterator<'rd, R> {
 }
 
 impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
-    type Item = Result<(DataCellRow, DelimitedLineTokenizerStats)>;
+    type Item = Result<DataCellRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
         // We early "return" a None through the ?, then we check for an error inside the Some(Result)
-        let (dlt_iter_res_vec, dlt_iter_res_stats) = match self.pcp.dlt_iter.next()? {
+        let dlt_iter_res_vec = match self.pcp.dlt_iter.next()? {
             Err(e) => return Some(Err(e)),
             Ok(dlt_iter_res) => dlt_iter_res,
         };
 
         // Special case for the first line, which might be a header line and must be treated differently.
-        if dlt_iter_res_stats.is_at_first_line_to_parse() {
+        if self.pcp.dlt_iter.get_stats().is_at_first_line_to_parse() {
             // If we don't have type info for the columns, default to String for everything, as this is a common
             // usecase when typings are not actually needed, e.g. when we just want to skip certain things, etc.
             if self.pcp.column_typings.is_empty() {
@@ -197,7 +196,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     Some(&dlt_iter_res_vec),
                     &self.pcp.column_typings,
                 ) {
-                    Ok(v) => Some(v),
+                    Ok(v) => v,
                     Err(e) => return Some(Err(e)),
                 };
 
@@ -210,8 +209,6 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     // All we really care about here is, that we default the type to String.
                     let header_name = &self
                         .column_layout_template
-                        .as_ref()
-                        .unwrap() // This is set above, no risk in calling unwrap here!
                         .0 // TODO: is there a way we don't need to rely on the underlying vec?
                         .get(i)
                         .unwrap() // When we are here, we know we already successfully set it
@@ -227,7 +224,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     );
                     csv_header_data_cell_row.push(new_csv_cell);
                 });
-                return Some(Ok((csv_header_data_cell_row, dlt_iter_res_stats)));
+                return Some(Ok(csv_header_data_cell_row));
             } else {
                 // In this case, the first line is actual data, meaning, we first need to build the
                 // structure, without parsing and setting the headers.
@@ -235,24 +232,17 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 // and then type the data.
                 self.column_layout_template =
                     match build_layout_template(None, &self.pcp.column_typings) {
-                        Ok(v) => Some(v),
+                        Ok(v) => v,
                         Err(e) => return Some(Err(e)),
                     };
             }
         }
 
         // Shared logic for all data, or non-header lines
-        let mut row_data: DataCellRow = match self.column_layout_template.clone() {
-            Some(v) => v,
-            None => {
-                return Some(Err(PattiCsvError::Generic {
-                    msg: "Error! No structure template available, but expected one.".into(),
-                }))
-            }
-        };
+        let mut row_data: DataCellRow = self.column_layout_template.clone();
 
         let sanitized_tokens = match sanitize_tokenizer_iter_res(
-            dlt_iter_res_stats.curr_line_num,
+            self.pcp.dlt_iter.get_stats().curr_line_num,
             dlt_iter_res_vec,
             &self.pcp.column_transitizers,
         ) {
@@ -280,7 +270,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                         msg: format!(
                             "{:?}; line: {}; column: {}; header: {}",
                             e,
-                            &dlt_iter_res_stats.curr_line_num,
+                            &self.pcp.dlt_iter.get_stats().curr_line_num,
                             &i,
                             &row_data.0.get(i).unwrap().get_name()
                         ),
@@ -288,18 +278,18 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 }
             };
         }
-        Some(Ok((row_data, dlt_iter_res_stats)))
+        Some(Ok(row_data))
     }
 }
 
 impl<'rd, R: Read> IntoIterator for PattiCsvParser<'rd, R> {
-    type Item = Result<(DataCellRow, DelimitedLineTokenizerStats)>;
+    type Item = Result<DataCellRow>;
     type IntoIter = PattiCsvParserIterator<'rd, R>;
 
     fn into_iter(self) -> Self::IntoIter {
         PattiCsvParserIterator {
             pcp: self,
-            column_layout_template: None,
+            column_layout_template: DataCellRow::default(),
         }
     }
 }
@@ -383,8 +373,8 @@ mod tests {
             .unwrap();
 
         let mut iter = parser.into_iter();
-        let headers = iter.next().unwrap().unwrap().0;
-        let line_1 = iter.next().unwrap().unwrap().0;
+        let headers = iter.next().unwrap().unwrap();
+        let line_1 = iter.next().unwrap().unwrap();
 
         // println!("{:?}", headers);
         // println!("{:?}", line_1);
@@ -481,8 +471,8 @@ mod tests {
             .unwrap();
 
         let mut iter = parser.into_iter();
-        let headers = iter.next().unwrap().unwrap().0;
-        let line_1 = iter.next().unwrap().unwrap().0;
+        let headers = iter.next().unwrap().unwrap();
+        let line_1 = iter.next().unwrap().unwrap();
 
         // println!("{:?}", headers);
         // println!("{:?}", line_1);

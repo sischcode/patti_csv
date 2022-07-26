@@ -460,7 +460,7 @@ mod tests {
                     ),
                 ]
             },
-            res_header.0
+            res_header
         );
 
         assert_eq!(
@@ -487,7 +487,7 @@ mod tests {
                     ),
                 ]
             },
-            res_line01.0
+            res_line01
         );
     }
 }
