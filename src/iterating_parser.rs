@@ -59,7 +59,7 @@ where
     save_skipped_lines: bool,
     column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
     mandatory_column_typings: bool,
-    column_typings: Vec<TypeColumnEntry>,
+    column_typings: Option<Vec<TypeColumnEntry>>,
 }
 
 impl<'rd, R: Read> PattiCsvParserBuilder<R> {
@@ -72,7 +72,7 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
             skip_take_lines_fns: None,
             column_transitizers: None,
             mandatory_column_typings: false,
-            column_typings: Vec::new(),
+            column_typings: None,
             phantom: PhantomData::default(),
         }
     }
@@ -111,22 +111,29 @@ impl<'rd, R: Read> PattiCsvParserBuilder<R> {
         self
     }
     pub fn column_typings(&mut self, t: Vec<TypeColumnEntry>) -> &mut PattiCsvParserBuilder<R> {
-        self.column_typings = t;
+        self.column_typings = Some(t);
         self
     }
-    /// For simplicity sake we consume the builder. We also want the input / csv-source file here
-    /// already. We accept this for know, since we have to create a new parser for every parsing
-    /// action anyway since we...consume the config during creation of the parser.
+    /// For simplicity sake we consume the builder. We also want the input / csv-source file here already.
+    /// We accept this for know, since we have to create a new parser for every parsing action anyway since
+    /// we...consume the config during creation of the parser.
     pub fn build(&mut self, input_raw_data: &'rd mut R) -> Result<PattiCsvParser<'rd, R>> {
-        if self.mandatory_column_typings && self.column_typings.is_empty() {
+        if self.mandatory_column_typings && self.column_typings.is_none() {
             return Err(PattiCsvError::Generic {
                 msg: String::from("Column typings have been flagged mandatory but are not set!"),
             });
         }
+
+        let column_typings: Vec<TypeColumnEntry> = if self.column_typings.is_none() {
+            Vec::with_capacity(15) // we need to start somewhere, and since this is just one line of data, I'd rather over-allocate
+        } else {
+            std::mem::take(&mut self.column_typings).unwrap() // checked above!
+        };
+
         Ok(PattiCsvParser {
             first_line_is_header: self.first_line_is_header,
             column_transitizers: std::mem::take(&mut self.column_transitizers),
-            column_typings: std::mem::take(&mut self.column_typings),
+            column_typings,
             dlt_iter: DelimitedLineTokenizer::new(
                 input_raw_data,
                 self.separator_char,
@@ -170,27 +177,31 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
     type Item = Result<DataCellRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // .next() returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
-        // We early "return" a None through the ?, then we check for an error inside the Some(Result)
+        // .next() yields "Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>".
+        // We early "return" a None (i.e. end of parsing) through the ?, then we check for an error inside the Some(Result)
         let dlt_iter_res_vec = match self.pcp.dlt_iter.next()? {
+            // returns a: Option<Result<(Vec<String>, DelimitedLineTokenizerStats)>>
             Err(e) => return Some(Err(e)),
             Ok(dlt_iter_res) => dlt_iter_res,
         };
 
-        // Special case for the first line, which might be a header line and must be treated differently.
+        // Special case for the first line, which might be a header line and must be treated differently either way. This is only run once!
         if self.pcp.dlt_iter.get_stats().is_at_first_line_to_parse() {
-            // If we don't have type info for the columns, default to String for everything, as this is a common
-            // usecase when typings are not actually needed, e.g. when we just want to skip certain things, etc.
-            if self.pcp.column_typings.is_empty() {
-                for _ in 0..dlt_iter_res_vec.len() {
+            // If we don't have type info for the columns, default to String for everything and also set the header name to the index.
+            let len_typings = self.pcp.column_typings.len();
+            let len_data = dlt_iter_res_vec.len();
+
+            if len_typings == 0 {
+                for _ in 0..len_data {
                     self.pcp
                         .column_typings
                         .push(TypeColumnEntry::new(None, ValueType::String));
                 }
+            } else if len_typings != len_data {
+                return Some(Err(PattiCsvError::ConfigError { msg: format!("Column typings provided, but length {} differs from actual length of data with num columns {}", len_typings, len_data) }));
             }
 
-            // If this is the case, we need to set the correct headers in our template, then return
-            // the data as the first line.
+            // Set the correct headers in our template, i.e. make a column layout template, then return the data as the first line.
             if self.pcp.first_line_is_header {
                 self.column_layout_template = match build_layout_template(
                     Some(&dlt_iter_res_vec),
@@ -200,18 +211,16 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                     Err(e) => return Some(Err(e)),
                 };
 
-                // Special case for the header line, where our datatype is always, hardcoded, a string.
-                // Also, we need to use the correct header names that may come from the typings, or the
-                // headerline, or are defaulted to indices, in this order!
-                let mut csv_header_data_cell_row: DataCellRow = DataCellRow::new();
+                // We hardcode the datatype to ValueName::String for the header line.
+                let mut csv_header_data_cell_row: DataCellRow =
+                    DataCellRow::with_capacity(len_data);
                 dlt_iter_res_vec.into_iter().enumerate().for_each(|(i, _)| {
                     // We have set the correct header-name above anyway, we can just use it here!
-                    // All we really care about here is, that we default the type to String.
                     let header_name = &self
                         .column_layout_template
                         .0 // TODO: is there a way we don't need to rely on the underlying vec?
                         .get(i)
-                        .unwrap() // When we are here, we know we already successfully set it
+                        .unwrap() // we're sure we have something here! We set it above!
                         .name;
 
                     // TODO: do we want transitization on the headers!?
@@ -226,10 +235,8 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 });
                 return Some(Ok(csv_header_data_cell_row));
             } else {
-                // In this case, the first line is actual data, meaning, we first need to build the
-                // structure, without parsing and setting the headers.
-                // We do not(!) return this immediately as the first line, since we must first sanitize
-                // and then type the data.
+                // In this case, the first line is actual data, meaning, we first need to build the structure, without parsing and setting the headers.
+                // We do not(!) return this immediately as the first line, since we must first sanitize and then type the data.
                 self.column_layout_template =
                     match build_layout_template(None, &self.pcp.column_typings) {
                         Ok(v) => v,
@@ -238,7 +245,9 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             }
         }
 
-        // Shared logic for all data, or non-header lines
+        // --------------------------------------------------------------------------------------------------------------------------------
+        // ------------------------------------------------ Handle data rows --------------------------------------------------------------
+        // --------------------------------------------------------------------------------------------------------------------------------
         let mut row_data: DataCellRow = self.column_layout_template.clone();
 
         let sanitized_tokens = match sanitize_tokenizer_iter_res(
@@ -252,13 +261,17 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
 
         let col_iter = row_data.0.iter_mut().enumerate(); // TODO: is there a way we don't need to rely on the underlying vec?
         for (i, cell) in col_iter {
+            // We can safely unwrap here and be sure we won't have an illegal index access, because, above:
+            // a) if we have no typings, we use the same length (from the tokens/data) to build them, and ...
+            // b) if we have typings, we check against the length of the tokens/data, and...
+            // ...subsequently we build the column layout template from the typings, AND this layout template is then used (as a clone) here, as the rows_data.
             let curr_token = sanitized_tokens.get(i).unwrap();
-            let typings = self.pcp.column_typings.get(i).unwrap(); // TODO: I think this is save, as the col iter index shouldn't be larger than the typings, but need to check again!
+            let typings = self.pcp.column_typings.get(i).unwrap();
 
             cell.data = match Value::from_str_and_type_with_chrono_pattern_with_none_map(
                 curr_token,
                 &cell.dtype,
-                typings.chrono_pattern.as_ref().map(|e| e.as_str()), // we already checked above
+                typings.chrono_pattern.as_ref().map(|e| e.as_str()),
                 typings
                     .map_to_none
                     .as_ref()

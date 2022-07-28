@@ -14,32 +14,32 @@ pub fn build_layout_template(
     let mut csv_cell_templ_row = DataCellRow::new(); // our return value
 
     match header_tokens {
+        // If we do not have header tokens (i.e. from the parsed column header line), we only have the column_typings info that is either provided
+        // through the user config, or auto-generated as everything-is-string + index-numbers-as-column headers.
+        // However, since the header name is optional in the typings, we still have to fill in with index-as-header-name, if the header name is not
+        // provided.
         None => {
             for (idx, tce) in column_typing.iter().enumerate() {
                 csv_cell_templ_row.push(DataCell::new_without_data(
                     tce.target_type.clone(),
-                    tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to indices as header, if no real header name is given
+                    tce.header.as_ref().unwrap_or(&idx.to_string()).clone(), // fallback to index-as-header, if no real header name is given
                     idx,
                 ));
             }
         }
+        // If we're here, we have header lines AND column typings (either real ones, or auto generated index-as-header-name ones. In this
+        // case the type would also be ValueName::String. Either way, we know that the column typings info is complete, length / # column wise.)
+        // From a logical standpoint, the column typings have precedence over the header lines, because they are used to actually override
+        // given header values.
         Some(header_tokens) => {
-            let mut header_map = HashMap::<usize, String>::new();
-            for (i, token) in header_tokens.iter().enumerate() {
-                header_map.insert(i, token.clone());
-            }
-
             for (idx, tce) in column_typing.iter().enumerate() {
                 csv_cell_templ_row.push(DataCell::new_without_data(
                     tce.target_type.clone(),
-                    // Either we have a header name from the typings, or the headerline.
-                    // If we have no header from the typings (which is ok) and also NO
-                    // header from the headerline (not ok), then we need to error.
                     tce.header
                         .as_ref()
-                        .or_else(|| header_map.get(&idx))
+                        .or_else(|| header_tokens.get(idx)) // ok returns the column-typing header, else returns the header-header
                         .ok_or(PattiCsvError::Generic {
-                            msg: format!("No header provided for column#{}", idx),
+                            msg: format!("No header provided for column#{}", idx), // we don't fall back to indexes, like above, because something is wrong, when we don't have a header from the header line
                         })?
                         .clone(),
                     idx,
