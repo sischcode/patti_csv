@@ -31,6 +31,7 @@ pub struct ParserOpts {
     pub enclosure_char: Option<char>,
     pub lines: Option<ParserOptLines>,
     pub first_line_is_header: bool,
+    pub save_skipped_lines: bool,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -181,7 +182,7 @@ mod tests {
                 skip_lines_from_end: Some(1),
                 skip_lines_by_startswith: Some(vec!["foo".to_string(), "-".to_string()]),
                 take_lines_by_startswith: Some(vec!["bar".to_string()]),
-                skip_empty_lines: Some(true)
+                skip_empty_lines: Some(true),
             },
             serde_json::from_str(data).expect("could not deserialize ")
         )
@@ -389,6 +390,7 @@ mod tests {
                     "skipLinesByStartswith": ["#", "-"],
                     "skipEmptyLines": true
                 },
+                "saveSkippedLines": false,
                 "firstLineIsHeader": true
             },
             "sanitizeColumns": [{
@@ -436,6 +438,7 @@ mod tests {
                     take_lines_by_startswith: None,
                 }),
                 first_line_is_header: true,
+                save_skipped_lines: false,
             },
             sanitize_columns: Some(vec![
                 SanitizeColumnsEntry {

@@ -94,29 +94,31 @@ impl TryFrom<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTok
 
 impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
     fn from(tce: &mut TypeColumnsEntry) -> Self {
-        let src_pattern = tce.src_pattern.as_mut();
-        let map_to_none = tce.map_to_none.as_mut();
-        match (&src_pattern, &map_to_none) {
+        let src_pattern_opt = tce.src_pattern.as_mut();
+        let map_to_none_opt = tce.map_to_none.as_mut();
+        match (src_pattern_opt, map_to_none_opt) {
             (None, None) => TypeColumnEntry::new(
                 std::mem::take(&mut tce.header),
                 std::mem::take(&mut tce.target_type),
             ),
-            (None, Some(_)) => TypeColumnEntry::new_with_map_to_none(
+            (None, Some(map_to_none)) => TypeColumnEntry::new_with_map_to_none(
                 std::mem::take(&mut tce.header),
                 std::mem::take(&mut tce.target_type),
-                std::mem::take(map_to_none.unwrap()), // checked in match
+                std::mem::take(map_to_none),
             ),
-            (Some(_), None) => TypeColumnEntry::new_with_chrono_pattern(
+            (Some(src_pattern), None) => TypeColumnEntry::new_with_chrono_pattern(
                 std::mem::take(&mut tce.header),
                 std::mem::take(&mut tce.target_type),
-                std::mem::take(src_pattern.unwrap()), // checked in match
+                std::mem::take(src_pattern),
             ),
-            (Some(_), Some(_)) => TypeColumnEntry::new_with_chrono_pattern_with_map_to_none(
-                std::mem::take(&mut tce.header),
-                std::mem::take(&mut tce.target_type),
-                std::mem::take(src_pattern.unwrap()), // checked in match
-                std::mem::take(map_to_none.unwrap()), // checked in match
-            ),
+            (Some(src_pattern), Some(map_to_none)) => {
+                TypeColumnEntry::new_with_chrono_pattern_with_map_to_none(
+                    std::mem::take(&mut tce.header),
+                    std::mem::take(&mut tce.target_type),
+                    std::mem::take(src_pattern),
+                    std::mem::take(map_to_none),
+                )
+            }
         }
     }
 }
@@ -211,7 +213,8 @@ pub fn patti_csv_file_parser_from<'rd>(
     builder
         .enclosure_char(cfg.parser_opts.enclosure_char)
         .separator_char(cfg.parser_opts.separator_char)
-        .first_line_is_header(cfg.parser_opts.first_line_is_header);
+        .first_line_is_header(cfg.parser_opts.first_line_is_header)
+        .save_skipped_lines(cfg.parser_opts.save_skipped_lines);
 
     if let Some(mut san) = cfg.sanitize_columns {
         let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
@@ -285,7 +288,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_trim_all() {
+    fn from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_trim_all() {
         let mut sce = SanitizeColumnsEntry {
             comment: None,
             idx: None,
@@ -304,7 +307,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_replace_with() {
+    fn from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_replace_with() {
         let mut sce = SanitizeColumnsEntry {
             comment: None,
             idx: Some(1),
@@ -330,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_type_columns_entry_for_type_column_entry_no_date_type() {
+    fn from_type_columns_entry_for_type_column_entry_no_date_type() {
         let exp = TypeColumnEntry::new(Some(String::from("header-1")), ValueType::Char);
         let mut test = TypeColumnsEntry::builder()
             .with_header("header-1")
@@ -340,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_type_columns_entry_for_type_column_entry_date_type() {
+    fn from_type_columns_entry_for_type_column_entry_date_type() {
         let exp = TypeColumnEntry::new(Some(String::from("header-1")), ValueType::DateTime);
         let mut test = TypeColumnsEntry::builder()
             .with_header("header-1")
@@ -350,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn test_try_from_data_cfg_root_tuple_for_patti_csv_parser_1() {
+    fn try_from_data_cfg_root_tuple_for_patti_csv_parser_1() {
         let cfg = ConfigRoot {
             comment: None,
             parser_opts: ParserOpts {
@@ -359,13 +362,14 @@ mod tests {
                 enclosure_char: Some('"'),
                 lines: Some(ParserOptLines {
                     comment: None,
-                    skip_lines_from_start: Some(1 as usize),
+                    skip_lines_from_start: Some(1_usize),
                     skip_empty_lines: Some(true),
                     skip_lines_by_startswith: Some(vec![String::from("#"), String::from("-")]),
                     take_lines_by_startswith: None,
                     skip_lines_from_end: None,
                 }),
                 first_line_is_header: true,
+                save_skipped_lines: false,
             },
             sanitize_columns: Some(vec![
                 SanitizeColumnsEntry {
@@ -458,7 +462,7 @@ mod tests {
                     ),
                 ]
             },
-            res_header.0
+            res_header
         );
 
         assert_eq!(
@@ -485,7 +489,7 @@ mod tests {
                     ),
                 ]
             },
-            res_line01.0
+            res_line01
         );
     }
 }

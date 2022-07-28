@@ -11,6 +11,7 @@ pub enum WrappedErrors {
 #[derive(Debug, PartialEq, Display, Clone)]
 pub enum PattiCsvError {
     Generic { msg: String },
+    ConfigError { msg: String },
     Wrapped(WrappedErrors),
     Tokenize(TokenizerError),
     Sanitize(SanitizeError),
