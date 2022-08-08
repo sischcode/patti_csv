@@ -1,7 +1,7 @@
 use strum_macros::Display;
 use thiserror::Error;
 
-use venum::errors::VenumError;
+use venum::errors_result::VenumError;
 
 #[derive(Debug, PartialEq, Display, Clone)]
 pub enum WrappedErrors {

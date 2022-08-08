@@ -282,7 +282,8 @@ pub fn patti_csv_file_parser_from<'rd>(
 
 #[cfg(test)]
 mod tests {
-    use venum::venum::{Value, ValueType};
+    use venum::value::Value;
+    use venum::value_type::ValueType;
     use venum_tds::{data_cell::DataCell, data_cell_row::DataCellRow};
 
     use super::*;

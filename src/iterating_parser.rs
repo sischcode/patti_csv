@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::marker::PhantomData;
 
-use venum::venum::{Value, ValueType};
+use venum::value::Value;
+use venum::value_type::ValueType;
 use venum_tds::data_cell::DataCell;
 use venum_tds::data_cell_row::DataCellRow;
 

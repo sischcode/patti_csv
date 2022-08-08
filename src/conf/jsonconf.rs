@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use venum::venum::ValueType;
+use venum::value_type::ValueType;
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

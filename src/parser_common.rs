@@ -136,7 +136,8 @@ pub fn sanitize_tokenizer_iter_res(
 
 #[cfg(test)]
 mod tests {
-    use venum::venum::{Value, ValueType};
+    use venum::value::Value;
+    use venum::value_type::ValueType;
 
     use crate::transform_sanitize_token::*;
 

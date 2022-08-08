@@ -1,4 +1,4 @@
-use venum::venum::ValueType;
+use venum::value_type::ValueType;
 
 use super::transform_sanitize_token::*;
 

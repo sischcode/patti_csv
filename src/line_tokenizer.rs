@@ -240,7 +240,7 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'rd, R> {
         let mut skip_this_line = true;
 
         while skip_this_line {
-            line = String::new();
+            line.clear();
 
             self.stats.curr_line_num += 1;
             let bytes_read = match self.dlt.buf_raw_data.read_line(&mut line) {
