@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use venum_tds::data_cell::DataCell;
 use venum_tds::data_cell_row::DataCellRow;
@@ -8,7 +8,7 @@ use crate::errors::{PattiCsvError, Result, SanitizeError};
 use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
 
 pub fn build_layout_template(
-    header_tokens: Option<&Vec<String>>,
+    header_tokens: Option<&VecDeque<String>>,
     column_typing: &[TypeColumnEntry],
 ) -> Result<DataCellRow> {
     let mut csv_cell_templ_row = DataCellRow::new(); // our return value
@@ -52,86 +52,82 @@ pub fn build_layout_template(
 
 pub fn sanitize_token(
     token: String,
-    sanitizers: &Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_sanitizers: &HashMap<Option<usize>, TransformSanitizeTokens>,
     line_num: usize, // for error context
     col_num: usize,  // used internally AND for error context
 ) -> Result<String> {
-    match sanitizers {
-        // We have no sanitizers, return token as is
-        None => Ok(token),
-        // We have sanitizers...
-        Some(ref column_sanitizers) => {
-            // If we have sanitizers for index=None, that means, we have global sanitizers, not bound to any index. I.e. they will always be applied.
-            // Note that this strongly differs from getting None as a result of a .get on the HashMap!
-            let token = match column_sanitizers.get(&None) {
-                Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
-                    transitizer
-                        .transitize(&acc) // apply filter, then yield
-                        // Supply more error context
-                        .map_err(|e| {
-                            if let PattiCsvError::Sanitize(se) = e {
-                                PattiCsvError::Sanitize(SanitizeError::extend(
-                                    se,
-                                    Some(format!(
-                                        " Error in/from global sanitizer: {}.",
-                                        &transitizer.get_info()
-                                    )),
-                                    Some(line_num),
-                                    None,
-                                ))
-                            } else {
-                                panic!("If we end up here, we mixed errors!");
-                            }
-                        })
-                }),
-                None => Ok(token), // no global sanitizers. move on.
-            }?;
+    // If we have sanitizers for index=None, that means, we have global sanitizers, not bound to any index. I.e. they will always be applied.
+    // Note that this strongly differs from getting None as a result of a .get on the HashMap!
+    let token = match column_sanitizers.get(&None) {
+        Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
+            transitizer
+                .transitize(&acc) // apply filter, then yield
+                // Supply more error context
+                .map_err(|e| {
+                    if let PattiCsvError::Sanitize(se) = e {
+                        PattiCsvError::Sanitize(SanitizeError::extend(
+                            se,
+                            Some(format!(
+                                " Error in/from global sanitizer: {}.",
+                                &transitizer.get_info()
+                            )),
+                            Some(line_num),
+                            None,
+                        ))
+                    } else {
+                        panic!("If we end up here, we mixed errors!");
+                    }
+                })
+        }),
+        None => Ok(token), // no global sanitizers. move on.
+    }?;
 
-            // "local" (aka indexed) column sanitizers
-            match column_sanitizers.get(&Some(col_num)) {
-                // We don't have a local sanitizer for the specific "column", return token as is
-                None => Ok(token),
-                // Apply all sanitizers and return the sanitized token in the end
-                Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
-                    transitizer
-                        .transitize(&acc)
-                        // Supply more error context
-                        .map_err(|e| {
-                            if let PattiCsvError::Sanitize(se) = e {
-                                PattiCsvError::Sanitize(SanitizeError::extend(
-                                    se,
-                                    Some(format!(
-                                        " Error in/from local sanitizer: {}.",
-                                        &transitizer.get_info(),
-                                    )),
-                                    Some(line_num),
-                                    Some(col_num),
-                                ))
-                            } else {
-                                panic!("If we end up here, we mixed errors!");
-                            }
-                        })
-                }),
-            }
-        }
+    // "local" (aka indexed) column sanitizers
+    match column_sanitizers.get(&Some(col_num)) {
+        // We don't have a local sanitizer for the specific "column", return token as is
+        None => Ok(token),
+        // Apply all sanitizers and return the sanitized token in the end
+        Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
+            transitizer
+                .transitize(&acc)
+                // Supply more error context
+                .map_err(|e| {
+                    if let PattiCsvError::Sanitize(se) = e {
+                        PattiCsvError::Sanitize(SanitizeError::extend(
+                            se,
+                            Some(format!(
+                                " Error in/from local sanitizer: {}.",
+                                &transitizer.get_info(),
+                            )),
+                            Some(line_num),
+                            Some(col_num),
+                        ))
+                    } else {
+                        panic!("If we end up here, we mixed errors!");
+                    }
+                })
+        }),
     }
 }
 
 pub fn sanitize_tokenizer_iter_res(
     line_number: usize,
-    line_tokens: Vec<String>,
+    line_tokens: VecDeque<String>,
     column_transitizers: &Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
-) -> Result<Vec<String>> {
-    let mut ret: Vec<String> = Vec::with_capacity(line_tokens.len());
-
-    // Apply sanitization and escaping / enclosure
-    for (i, token) in line_tokens.into_iter().enumerate() {
-        // On first glance, borrowing and transforming inplace is smarter, however, all the transformations we use, allocate a
-        // new String anyway, so it doesn't make much sense.
-        let sanitized_token = sanitize_token(token, column_transitizers, line_number, i)?;
-        ret.push(sanitized_token);
+) -> Result<VecDeque<String>> {
+    match column_transitizers {
+        None => Ok(line_tokens),
+        Some(ct) => {
+            let mut ret: VecDeque<String> = VecDeque::with_capacity(line_tokens.len());
+            // Apply sanitization and escaping / enclosure
+            for (i, token) in line_tokens.into_iter().enumerate() {
+                // On first glance, borrowing and transforming inplace is smarter, however, all the transformations
+                // we use, allocate a new String anyway, so it doesn't make much sense.
+                ret.push_back(sanitize_token(token, ct, line_number, i)?);
+            }
+            Ok(ret)
+        }
     }
-    Ok(ret)
 }
 
 #[cfg(test)]
@@ -146,7 +142,8 @@ mod tests {
     // Supply both, header tokens and info via typings. Typings must get precedence.
     #[test]
     fn test_build_layout_template_w_typings_precedence() {
-        let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name
+        let header_tokens: &VecDeque<String> =
+            &VecDeque::from(vec![String::from("header1-from-header-tokens")]); // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             Some(String::from("header1-from-column-typings")), // first prio for header name (used here!)
             ValueType::String,
@@ -167,7 +164,8 @@ mod tests {
     // Supply info via header line only.
     #[test]
     fn test_build_layout_template_w_header_from_header_tokens() {
-        let header_tokens: &Vec<String> = &vec![String::from("header1-from-header-tokens")]; // second prio for header name (used here!)
+        let header_tokens: &VecDeque<String> =
+            &VecDeque::from(vec![String::from("header1-from-header-tokens")]); // second prio for header name (used here!)
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             None, // first prio for header name
             ValueType::String,
@@ -207,7 +205,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "No header provided for column#0")]
     fn test_build_layout_template_w_header_err_no_header_info() {
-        let header_tokens: &Vec<String> = &vec![]; // second prio for header name
+        let header_tokens: &VecDeque<String> = &VecDeque::new(); // second prio for header name
         let column_typing: &Vec<TypeColumnEntry> = &vec![TypeColumnEntry::new(
             None, // first prio for header name
             ValueType::String,
@@ -246,9 +244,7 @@ mod tests {
             ],
         );
 
-        let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
-
-        let res = sanitize_token(String::from("foobar   "), &san, 112, 3).unwrap();
+        let res = sanitize_token(String::from("foobar   "), &san_hm, 112, 3).unwrap();
         assert_eq!(String::from("FUUBAR"), res);
     }
 
@@ -260,9 +256,7 @@ mod tests {
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
-
-        let res = sanitize_token(String::from("10.00 (CHF)"), &san, 112, 0).unwrap();
+        let res = sanitize_token(String::from("10.00 (CHF)"), &san_hm, 112, 0).unwrap();
         assert_eq!(String::from("10.00"), res);
     }
 
@@ -277,9 +271,7 @@ mod tests {
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
-
-        sanitize_token(String::from("10 (CHF)"), &san, 112, 3).unwrap();
+        sanitize_token(String::from("10 (CHF)"), &san_hm, 112, 3).unwrap();
     }
 
     #[test]
@@ -293,8 +285,6 @@ mod tests {
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        let san: Option<HashMap<Option<usize>, TransformSanitizeTokens>> = Some(san_hm);
-
-        sanitize_token(String::from("10 (CHF)"), &san, 112, 0).unwrap();
+        sanitize_token(String::from("10 (CHF)"), &san_hm, 112, 0).unwrap();
     }
 }

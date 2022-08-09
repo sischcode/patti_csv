@@ -251,7 +251,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
         // --------------------------------------------------------------------------------------------------------------------------------
         let mut row_data: DataCellRow = self.column_layout_template.clone();
 
-        let sanitized_tokens = match sanitize_tokenizer_iter_res(
+        let mut sanitized_tokens = match sanitize_tokenizer_iter_res(
             self.pcp.dlt_iter.get_stats().curr_line_num,
             dlt_iter_res_vec,
             &self.pcp.column_transitizers,
@@ -266,31 +266,42 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
             // a) if we have no typings, we use the same length (from the tokens/data) to build them, and ...
             // b) if we have typings, we check against the length of the tokens/data, and...
             // ...subsequently we build the column layout template from the typings, AND this layout template is then used (as a clone) here, as the rows_data.
-            let curr_token = sanitized_tokens.get(i).unwrap();
-            let typings = self.pcp.column_typings.get(i).unwrap();
+            // NOTE: Tried it with unsafe { ...get_unchecked(i) } but could not measure a significant speed improvement.
+            let curr_token = sanitized_tokens.pop_front().unwrap();
+            let curr_typing = self.pcp.column_typings.get(i).unwrap();
 
-            cell.data = match Value::from_str_and_type_with_chrono_pattern_with_none_map(
-                curr_token,
-                &cell.dtype,
-                typings.chrono_pattern.as_ref().map(|e| e.as_str()),
-                typings
-                    .map_to_none
-                    .as_ref()
-                    .map(|e| e.iter().map(|ie| ie.as_str()).collect()), // TODO we really should be using a Vec<&str> here?
-            ) {
-                Ok(v) => v,
-                Err(e) => {
-                    return Some(Err(PattiCsvError::Generic {
-                        msg: format!(
-                            "{:?}; line: {}; column: {}; header: {}",
-                            e,
-                            &self.pcp.dlt_iter.get_stats().curr_line_num,
-                            &i,
-                            &row_data.0.get(i).unwrap().get_name()
-                        ),
-                    }))
-                }
-            };
+            // Special short-cut cases for Empty Strings, and String -> String "conversion". I.e. we don't have to do anything.
+            if curr_token.is_empty() {
+                cell.data = Value::None;
+            } else if curr_typing.target_type == ValueType::String
+                && (curr_typing.map_to_none.is_none()
+                    || curr_typing.map_to_none.as_ref().unwrap().is_empty())
+            {
+                cell.data = Value::String(curr_token);
+            } else {
+                cell.data = match Value::from_str_and_type_with_chrono_pattern_with_none_map(
+                    &curr_token,
+                    &cell.dtype,
+                    curr_typing.chrono_pattern.as_ref().map(|e| e.as_str()),
+                    curr_typing
+                        .map_to_none
+                        .as_ref()
+                        .map(|e| e.iter().map(|ie| ie.as_str()).collect()), // TODO we really should be using a Vec<&str> here?
+                ) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Some(Err(PattiCsvError::Generic {
+                            msg: format!(
+                                "{:?}; line: {}; column: {}; header: {}",
+                                e,
+                                &self.pcp.dlt_iter.get_stats().curr_line_num,
+                                &i,
+                                &row_data.0.get(i).unwrap().get_name()
+                            ),
+                        }))
+                    }
+                };
+            }
         }
         Some(Ok(row_data))
     }

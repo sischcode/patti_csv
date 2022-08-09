@@ -1,5 +1,8 @@
 use compact_str::CompactString;
-use std::io::{BufRead, BufReader, Read};
+use std::{
+    collections::VecDeque,
+    io::{BufRead, BufReader, Read},
+};
 
 use crate::errors::{PattiCsvError, Result, TokenizerError};
 
@@ -44,9 +47,10 @@ impl Default for DelimitedLineTokenizerStats {
 pub struct DelimitedLineTokenizer<'rd, R: Read> {
     num_tokens_exp_set: bool, // used as internal info to indicate if the num_tokens_exp has already been set. This is only done once!
     num_tokens_exp: usize, // number of tokens in a line/row, we expect, based on the first line (usually the header), is has parsed.
-    max_inline_str_size: usize, // helper for compact string. Since we're not that concerned with space limitations, we allocate the max a compact string can allocate on the stack
+    max_inline_str_size: usize, // helper for compact string. This is the max that can get stack allocated. CompactString::with_capacity(0) does actually exactly this we well.
     save_skipped_lines: bool,
     buf_raw_data: BufReader<&'rd mut R>,
+    _data: Vec<CompactString>,
     pub delim_char: char,
     pub encl_char: Option<char>,
     pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
@@ -70,6 +74,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
             max_inline_str_size: std::mem::size_of::<String>(),
             save_skipped_lines,
             buf_raw_data: BufReader::new(raw_data),
+            _data: Vec::with_capacity(15),
             delim_char: delim,
             encl_char: enclc,
             skip_take_lines_fns,
@@ -111,31 +116,149 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         }
     }
 
-    /// line_num is only used for error context
-    fn tokenize(&mut self, line_num: usize, s: &str) -> Result<Vec<String>> {
+    // fn tokenize_old(&mut self, line_num: usize, s: &str) -> Result<Vec<String>> {
+    //     let mut state = State::Start;
+    //     let mut data: Vec<CompactString> = Vec::with_capacity(self.num_tokens_exp);
+    //     // A small FSM here...
+    //     for c in s.chars() {
+    //         state = match state {
+    //             State::Start | State::Scan => match c {
+    //                 _ if c == self.delim_char => {
+    //                     // this means: empty field at start
+    //                     data.push(CompactString::with_capacity(self.max_inline_str_size));
+    //                     State::Scan
+    //                 }
+    //                 _ if Some(c) == self.encl_char => {
+    //                     // enclosure symbol (start) found
+    //                     data.push(CompactString::with_capacity(self.max_inline_str_size));
+    //                     State::QuotedField
+    //                 }
+    //                 _ => {
+    //                     // start of regular, un-enclosed field
+    //                     let mut cs = CompactString::with_capacity(self.max_inline_str_size);
+    //                     cs.push(c);
+    //                     data.push(cs);
+    //                     State::Field
+    //                 }
+    //             },
+    //             State::Field => match c {
+    //                 _ if c == self.delim_char => {
+    //                     State::Scan // ready for next field
+    //                 }
+    //                 _ if Some(c) == self.encl_char => {
+    //                     return Err(PattiCsvError::Tokenize(TokenizerError::IllegalEnclChar {
+    //                         line: line_num,
+    //                         token_num: data.len(),
+    //                     }))
+    //                 }
+    //                 _ => {
+    //                     data.last_mut().unwrap().push(c); // we only ever come from Start or Scan, so there is always a last element set!
+    //                     State::Field
+    //                 }
+    //             },
+    //             State::QuotedField => match c {
+    //                 _ if Some(c) == self.encl_char => State::QuoteInQuotedField,
+    //                 _ => {
+    //                     data.last_mut().unwrap().push(c); // we only ever come from Start or Scan, or QuoteInQuotedField, so there is always a last element set!
+    //                     State::QuotedField
+    //                 }
+    //             },
+    //             State::QuoteInQuotedField => match c {
+    //                 _ if c == self.delim_char => State::Scan, // enlosure closed, ready for next field
+    //                 _ if Some(c) == self.encl_char => {
+    //                     // enclosure character escaped successfully
+    //                     data.last_mut().unwrap().push(c); // we only ever come here from QuotedField, so there is always a last element set!
+    //                     State::QuotedField
+    //                 }
+    //                 _ => {
+    //                     return Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
+    //                         line: line_num,
+    //                         token_num: data.len(),
+    //                     }))
+    //                 }
+    //             },
+    //         }
+    //     }
+    //
+    //     // 1) A bit of cleanup. If we end in state Scan, this means, the last thing we read was a delimiter before it
+    //     //    ended, thusly we must append an empty "" at the end, to represent the empty column at the end
+    //     // 2) When we end on State:QuotedField, the field is not properly enclosed. For a quoted field to end properly,
+    //     //    we'd need to end on State:QuoteInQuotedField instead.
+    //     match state {
+    //         State::Scan => {
+    //             data.push(CompactString::new(""));
+    //         }
+    //         State::QuotedField => {
+    //             return Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
+    //                 line: line_num,
+    //                 token_num: data.len(),
+    //             }))
+    //         }
+    //         _ => (),
+    //     }
+    //
+    //     // After the first real line, we adjust the (future) length of the vec we allocate
+    //     if !self.num_tokens_exp_set {
+    //         self.num_tokens_exp = data.len();
+    //         self.num_tokens_exp_set = true;
+    //     }
+    //
+    //     Ok(data
+    //         .iter()
+    //         .map(|t| String::from(t.as_str()))
+    //         .collect::<Vec<String>>())
+    // }
+
+    fn tokenize(&mut self, line_num: usize, s: &str) -> Result<VecDeque<String>> {
         let mut state = State::Start;
-        let mut data: Vec<CompactString> = Vec::with_capacity(self.num_tokens_exp);
 
         // A small FSM here...
+        let mut curr_idx: usize = 0;
         for c in s.chars() {
             state = match state {
-                State::Start | State::Scan => match c {
+                State::Start => match c {
                     _ if c == self.delim_char => {
                         // this means: empty field at start
-                        data.push(CompactString::with_capacity(self.max_inline_str_size));
+                        self._data
+                            .push(CompactString::with_capacity(self.max_inline_str_size));
                         State::Scan
                     }
                     _ if Some(c) == self.encl_char => {
                         // enclosure symbol (start) found
-                        data.push(CompactString::with_capacity(self.max_inline_str_size));
+                        self._data
+                            .push(CompactString::with_capacity(self.max_inline_str_size));
                         State::QuotedField
                     }
                     _ => {
                         // start of regular, un-enclosed field
                         let mut cs = CompactString::with_capacity(self.max_inline_str_size);
                         cs.push(c);
-
-                        data.push(cs);
+                        self._data.push(cs);
+                        State::Field
+                    }
+                },
+                // Same as start, but we have to manage our idx var here.
+                State::Scan => match c {
+                    _ if c == self.delim_char => {
+                        // this means: empty field at start
+                        self._data
+                            .push(CompactString::with_capacity(self.max_inline_str_size));
+                        curr_idx += 1;
+                        State::Scan
+                    }
+                    _ if Some(c) == self.encl_char => {
+                        // enclosure symbol (start) found
+                        self._data
+                            .push(CompactString::with_capacity(self.max_inline_str_size));
+                        curr_idx += 1;
+                        State::QuotedField
+                    }
+                    _ => {
+                        // start of regular, un-enclosed field
+                        let mut cs = CompactString::with_capacity(self.max_inline_str_size);
+                        cs.push(c);
+                        self._data.push(cs);
+                        curr_idx += 1;
                         State::Field
                     }
                 },
@@ -146,18 +269,22 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
                     _ if Some(c) == self.encl_char => {
                         return Err(PattiCsvError::Tokenize(TokenizerError::IllegalEnclChar {
                             line: line_num,
-                            token_num: data.len(),
+                            token_num: self._data.len(),
                         }))
                     }
                     _ => {
-                        data.last_mut().unwrap().push(c); // we only ever come from Start or Scan, so there is always a last element set!
+                        unsafe {
+                            self._data.get_unchecked_mut(curr_idx).push(c); // we know for sure, this is the last index and it exists!
+                        }
                         State::Field
                     }
                 },
                 State::QuotedField => match c {
                     _ if Some(c) == self.encl_char => State::QuoteInQuotedField,
                     _ => {
-                        data.last_mut().unwrap().push(c); // we only ever come from Start or Scan, or QuoteInQuotedField, so there is always a last element set!
+                        unsafe {
+                            self._data.get_unchecked_mut(curr_idx).push(c); // we know for sure, this is the last index and it exists!
+                        }
                         State::QuotedField
                     }
                 },
@@ -165,13 +292,15 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
                     _ if c == self.delim_char => State::Scan, // enlosure closed, ready for next field
                     _ if Some(c) == self.encl_char => {
                         // enclosure character escaped successfully
-                        data.last_mut().unwrap().push(c); // we only ever come here from QuotedField, so there is always a last element set!
+                        unsafe {
+                            self._data.get_unchecked_mut(curr_idx).push(c); // we know for sure, this is the last index and it exists!
+                        }
                         State::QuotedField
                     }
                     _ => {
                         return Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
                             line: line_num,
-                            token_num: data.len(),
+                            token_num: self._data.len(),
                         }))
                     }
                 },
@@ -184,27 +313,24 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         //    we'd need to end on State:QuoteInQuotedField instead.
         match state {
             State::Scan => {
-                data.push(CompactString::new(""));
+                self._data.push(CompactString::new(""));
+                curr_idx += 1;
             }
             State::QuotedField => {
                 return Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
                     line: line_num,
-                    token_num: data.len(),
+                    token_num: curr_idx + 1,
                 }))
             }
             _ => (),
         }
 
-        // // After the first real line, we adjust the (future) length of the vec we allocate
-        if !self.num_tokens_exp_set {
-            self.num_tokens_exp = data.len();
-            self.num_tokens_exp_set = true;
-        }
+        let mut res: VecDeque<String> = VecDeque::with_capacity(curr_idx + 1);
+        self._data
+            .drain(..)
+            .for_each(|cs| res.push_back(String::from(cs.as_str())));
 
-        Ok(data
-            .iter()
-            .map(|t| String::from(t.as_str()))
-            .collect::<Vec<String>>())
+        Ok(res)
     }
 }
 
@@ -233,7 +359,7 @@ impl<'rd, R: Read> DelimitedLineTokenizerIter<'rd, R> {
 }
 
 impl<'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'rd, R> {
-    type Item = Result<Vec<String>>;
+    type Item = Result<VecDeque<String>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut line = String::new();
@@ -276,7 +402,7 @@ impl<'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'rd, R> {
 }
 
 impl<'rd, R: Read> IntoIterator for DelimitedLineTokenizer<'rd, R> {
-    type Item = Result<Vec<String>>;
+    type Item = Result<VecDeque<String>>;
     type IntoIter = DelimitedLineTokenizerIter<'rd, R>;
 
     fn into_iter(self) -> Self::IntoIter {
