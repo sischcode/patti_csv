@@ -1005,124 +1005,44 @@ const TEST_STR: &str =
 2002-06-01,-1,Lorem Foobar Sale,1234,\"Something something Foobar (foobar)\",Foobar,\"Something something\",Windows,CA,Canada,North America,1,0,1,0.00,0.00,USD,0.0000,0.0000,0.0000,0.0000,\"Foobar Multimedia\"";
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// const TEST_STR_ABC: &str = "a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz";
+const TEST_STR_ABC: &str = "a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz";
 
-/// the .tokenize functions are usually not accessible. We need to add a pub to them to bench it.
-// fn tokenize1() {
-//     let mut test_data_cursor = std::io::Cursor::new("");
-//     let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
-//     dlt.tokenize_old(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize_old(10, TEST_STR_ABC).unwrap();
-// }
-// fn tokenize2() {
-//     let mut test_data_cursor = std::io::Cursor::new("");
-//     let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
-//     dlt.tokenize(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(10, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(1, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(2, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(3, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(4, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(5, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(6, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(7, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(8, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(9, TEST_STR_ABC).unwrap();
-//     dlt.tokenize(10, TEST_STR_ABC).unwrap();
-// }
-// fn tokenize_benchmark(c: &mut Criterion) {
-//     let mut group = c.benchmark_group("Tokenize");
-//     group.sample_size(1000);
-//     group.bench_function(BenchmarkId::new("tokenize (old)", 1), |b| b.iter(|| tokenize1()));
-//     group.bench_function(BenchmarkId::new("tokenize (new)", 2), |b| b.iter(|| tokenize2()));    
-//     group.finish();
-// }
+// the .tokenize functions are usually not accessible. We need to add a pub to them to bench it.
+fn tokenize1() {
+    let mut test_data_cursor = std::io::Cursor::new("");
+    let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
+    dlt.tokenize(1, TEST_STR_ABC).unwrap();
+    dlt.tokenize(2, TEST_STR_ABC).unwrap();
+    dlt.tokenize(3, TEST_STR_ABC).unwrap();
+    dlt.tokenize(4, TEST_STR_ABC).unwrap();
+    dlt.tokenize(5, TEST_STR_ABC).unwrap();
+    dlt.tokenize(6, TEST_STR_ABC).unwrap();
+    dlt.tokenize(7, TEST_STR_ABC).unwrap();
+    dlt.tokenize(8, TEST_STR_ABC).unwrap();
+    dlt.tokenize(9, TEST_STR_ABC).unwrap();
+    dlt.tokenize(10, TEST_STR_ABC).unwrap();
+}
+fn tokenize2() {
+    let mut test_data_cursor = std::io::Cursor::new("");
+    let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
+    dlt.tokenize_new(1, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(2, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(3, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(4, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(5, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(6, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(7, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(8, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(9, TEST_STR_ABC).unwrap();
+    dlt.tokenize_new(10, TEST_STR_ABC).unwrap();
+}
+fn tokenize_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Tokenize");
+    group.sample_size(5000);
+    group.bench_function(BenchmarkId::new("tokenize (old)", 1), |b| b.iter(|| tokenize1()));
+    group.bench_function(BenchmarkId::new("tokenize (new)", 2), |b| b.iter(|| tokenize2()));    
+    group.finish();
+}
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1172,5 +1092,5 @@ fn parse_no_transform_no_typings_benchmark(c: &mut Criterion) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-criterion_group!(benches, /*tokenize_benchmark,*/ tokenizer_iter_tokenize_benchmark, parse_no_transform_no_typings_benchmark);
+criterion_group!(benches, tokenize_benchmark, tokenizer_iter_tokenize_benchmark, parse_no_transform_no_typings_benchmark);
 criterion_main!(benches);
