@@ -1008,7 +1008,21 @@ const TEST_STR: &str =
 const TEST_STR_ABC: &str = "a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz";
 
 // the .tokenize functions are usually not accessible. We need to add a pub to them to bench it.
-fn tokenize1() {
+fn tokenize_old() {
+    let mut test_data_cursor = std::io::Cursor::new("");
+    let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
+    dlt.tokenize_old(1, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(2, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(3, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(4, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(5, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(6, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(7, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(8, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(9, TEST_STR_ABC).unwrap();
+    dlt.tokenize_old(10, TEST_STR_ABC).unwrap();
+}
+fn tokenize() {
     let mut test_data_cursor = std::io::Cursor::new("");
     let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
     dlt.tokenize(1, TEST_STR_ABC).unwrap();
@@ -1022,7 +1036,7 @@ fn tokenize1() {
     dlt.tokenize(9, TEST_STR_ABC).unwrap();
     dlt.tokenize(10, TEST_STR_ABC).unwrap();
 }
-fn tokenize2() {
+fn tokenize_new() {
     let mut test_data_cursor = std::io::Cursor::new("");
     let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
     dlt.tokenize_new(1, TEST_STR_ABC).unwrap();
@@ -1039,8 +1053,9 @@ fn tokenize2() {
 fn tokenize_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Tokenize");
     group.sample_size(5000);
-    group.bench_function(BenchmarkId::new("tokenize (old)", 1), |b| b.iter(|| tokenize1()));
-    group.bench_function(BenchmarkId::new("tokenize (new)", 2), |b| b.iter(|| tokenize2()));    
+    group.bench_function(BenchmarkId::new("tokenize (old)", 1), |b| b.iter(|| tokenize_old()));
+    group.bench_function(BenchmarkId::new("tokenize (curr)", 2), |b| b.iter(|| tokenize()));
+    group.bench_function(BenchmarkId::new("tokenize (new)", 3), |b| b.iter(|| tokenize_new()));
     group.finish();
 }
 
