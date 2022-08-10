@@ -1052,7 +1052,7 @@ fn tokenize_new() {
 }
 fn tokenize_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Tokenize");
-    group.sample_size(5000);
+    group.sample_size(1000);
     group.bench_function(BenchmarkId::new("tokenize (old)", 1), |b| b.iter(|| tokenize_old()));
     group.bench_function(BenchmarkId::new("tokenize (curr)", 2), |b| b.iter(|| tokenize()));
     group.bench_function(BenchmarkId::new("tokenize (new)", 3), |b| b.iter(|| tokenize_new()));
