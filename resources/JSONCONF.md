@@ -4,7 +4,7 @@ With this we can configure the parser itself, as well as some essential transfor
 
 On the upper most level, a configuration consists of these objects:
 
-```json
+```jsonc
 {
     "comment": "Some explanation",  // 1) (optional)
     "parserOpts": {},               // 2) (mandatory)
@@ -22,7 +22,7 @@ On the upper most level, a configuration consists of these objects:
 ## `parserOpts` - Parser Options
 This is how the parser can be configured.
 
-```json
+```jsonc
 "parserOpts": {                                     // 0) 
     "comment": "Some explanation/documentation",    // 1) (optional)
     "separatorChar": ",",                           // 2) (mandatory)
@@ -38,7 +38,7 @@ This is how the parser can be configured.
     "firstLineIsHeader": true                       // 10) (mandatory)
 },
 ```
-0. The `parserOpts` JSON object.
+0. The `parserOpts` jsonc object.
 1. A comment describing why it's configured the way it is.
 2. The separator character used.
 3. TODO: The enclosure character used (any defaults here?)
@@ -59,11 +59,11 @@ Also, because of this, a downstream transformation step might not be needed.
 
 On the down side, arguably, things can be done with this that are not traditionally the job of a parser, but rather the downstream processing.
 
-Column sanitization, from a json standpoint, is an array of "sanitizers" for **every** column. **Column indexing is 0-based!**
+Column sanitization, from a jsonc standpoint, is an array of "sanitizers" for **every** column. **Column indexing is 0-based!**
 
 **CAUTION**: The correcteness of the config is **not** checked at this point! It is totally possible to build faulty configurations!
 
-```json
+```jsonc
 "sanitizeColumns": [{               // 0)
     "comment": "Some explanation",  // 1) (optional)
     "sanitizers": [{                // 2) (mandatory)
@@ -79,7 +79,7 @@ Column sanitization, from a json standpoint, is an array of "sanitizers" for **e
     }]
 }
 ```
-0. The `sanitizeColumns` array, holding the sanitizer configs as JSON objects. Each sanitizer config can have many sanitizers.
+0. The `sanitizeColumns` array, holding the sanitizer configs as jsonc objects. Each sanitizer config can have many sanitizers.
 1. An optional comment on "column" basis.
 2. The array holding the actual, individual, sanitizer configuration. **NOTE**. We do _not_ have column index configured here. Meaning it is a global configuration that will be applied to _all_ columns.
 3. The sanitization type. In this example a _trim_ operation.
@@ -87,7 +87,7 @@ Column sanitization, from a json standpoint, is an array of "sanitizers" for **e
 
 ### `trim` sanitizer
 
-```json
+```jsonc
 {
     "type": "trim", // 1) (mandatory)
     "spec": "left"  // 2) (mandatory) (example)
