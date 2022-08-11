@@ -38,7 +38,7 @@ This is how the parser can be configured.
     "firstLineIsHeader": true                       // 10) (mandatory)
 },
 ```
-0. The `parserOpts` jsonc object.
+0. The `parserOpts` json object.
 1. A comment describing why it's configured the way it is.
 2. The separator character used.
 3. TODO: The enclosure character used (any defaults here?)
@@ -59,7 +59,7 @@ Also, because of this, a downstream transformation step might not be needed.
 
 On the down side, arguably, things can be done with this that are not traditionally the job of a parser, but rather the downstream processing.
 
-Column sanitization, from a jsonc standpoint, is an array of "sanitizers" for **every** column. **Column indexing is 0-based!**
+Column sanitization, from a json standpoint, is an array of "sanitizers" for **every** column. **Column indexing is 0-based!**
 
 **CAUTION**: The correcteness of the config is **not** checked at this point! It is totally possible to build faulty configurations!
 
@@ -79,7 +79,7 @@ Column sanitization, from a jsonc standpoint, is an array of "sanitizers" for **
     }]
 }
 ```
-0. The `sanitizeColumns` array, holding the sanitizer configs as jsonc objects. Each sanitizer config can have many sanitizers.
+0. The `sanitizeColumns` array, holding the sanitizer configs as json objects. Each sanitizer config can have many sanitizers.
 1. An optional comment on "column" basis.
 2. The array holding the actual, individual, sanitizer configuration. **NOTE**. We do _not_ have column index configured here. Meaning it is a global configuration that will be applied to _all_ columns.
 3. The sanitization type. In this example a _trim_ operation.
