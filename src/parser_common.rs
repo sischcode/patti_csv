@@ -151,12 +151,15 @@ mod tests {
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.push(DataCell::new(
-            ValueType::String,
-            "header1-from-column-typings".into(),
-            0,
-            Value::None,
-        ));
+        exp.push(
+            DataCell::new_with_type_info(
+                ValueType::String,
+                "header1-from-column-typings".into(),
+                0,
+                Value::None,
+            )
+            .unwrap(),
+        );
 
         assert_eq!(exp, res);
     }
@@ -173,12 +176,15 @@ mod tests {
         let res = build_layout_template(Some(header_tokens), column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.push(DataCell::new(
-            ValueType::String,
-            "header1-from-header-tokens".into(),
-            0,
-            Value::None,
-        ));
+        exp.push(
+            DataCell::new_with_type_info(
+                ValueType::String,
+                "header1-from-header-tokens".into(),
+                0,
+                Value::None,
+            )
+            .unwrap(),
+        );
 
         assert_eq!(exp, res);
     }
@@ -192,12 +198,15 @@ mod tests {
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.push(DataCell::new(
-            ValueType::String,
-            "header1-from-column-typings".into(),
-            0,
-            Value::None,
-        ));
+        exp.push(
+            DataCell::new_with_type_info(
+                ValueType::String,
+                "header1-from-column-typings".into(),
+                0,
+                Value::None,
+            )
+            .unwrap(),
+        );
 
         assert_eq!(exp, res);
     }
@@ -224,7 +233,9 @@ mod tests {
         let res = build_layout_template(None, column_typing).unwrap();
 
         let mut exp = DataCellRow::new();
-        exp.push(DataCell::new(ValueType::String, "0".into(), 0, Value::None)); // fallback to index as header "name" (used here!)
+        exp.push(
+            DataCell::new_with_type_info(ValueType::String, "0".into(), 0, Value::None).unwrap(),
+        ); // fallback to index as header "name" (used here!)
 
         assert_eq!(exp, res);
     }

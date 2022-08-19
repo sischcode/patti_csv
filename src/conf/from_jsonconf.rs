@@ -156,7 +156,7 @@ impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
             if let Some(v) = skip_take_lines_cfg.skip_lines_from_start {
                 skip_take_lines.push(Box::new(SkipLinesFromStart { skip_num_lines: v }));
             }
-            if let Some(_) = skip_take_lines_cfg.skip_lines_from_end {
+            if skip_take_lines_cfg.skip_lines_from_end.is_some() {
                 return Err(PattiCsvError::Generic { msg: String::from("skipLinesFromEnd / skip_lines_from_end only works for R:Read = File, which we cannot guarantee here. Try 'patti_csv_file_parser_from' instead.") });
                 // TODO is there a better way?
             }
@@ -205,10 +205,7 @@ impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> 
 
 // TODO: there is currently a LOT of duplication here. See the upper: impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R>
 // I haven't figured out yet how to "split" between Instances that impl Read and are NOT a file, and those that are.
-pub fn patti_csv_file_parser_from<'rd>(
-    cfg: ConfigRoot,
-    f: &'rd mut File,
-) -> Result<PattiCsvParser<'rd, File>> {
+pub fn patti_csv_file_parser_from(cfg: ConfigRoot, f: &mut File) -> Result<PattiCsvParser<File>> {
     let mut builder: PattiCsvParserBuilder<File> = PattiCsvParserBuilder::new();
     builder
         .enclosure_char(cfg.parser_opts.enclosure_char)
@@ -438,29 +435,29 @@ mod tests {
             DataCellRow {
                 0: vec![
                     DataCell::new(
-                        ValueType::String,
                         String::from("Header-1"),
                         0,
                         Value::String(String::from("Header-1"))
-                    ),
+                    )
+                    .unwrap(),
                     DataCell::new(
-                        ValueType::String,
                         String::from("Header-2"),
                         1,
                         Value::String(String::from("Header-2"))
-                    ),
+                    )
+                    .unwrap(),
                     DataCell::new(
-                        ValueType::String,
                         String::from("Header-3"),
                         2,
                         Value::String(String::from("Header-3"))
-                    ),
+                    )
+                    .unwrap(),
                     DataCell::new(
-                        ValueType::String,
                         String::from("Header-4"),
                         3,
                         Value::String(String::from("Header-4"))
-                    ),
+                    )
+                    .unwrap(),
                 ]
             },
             res_header
@@ -469,25 +466,20 @@ mod tests {
         assert_eq!(
             DataCellRow {
                 0: vec![
+                    DataCell::new(String::from("Header-1"), 0, Value::Char('a')).unwrap(),
                     DataCell::new(
-                        ValueType::Char,
-                        String::from("Header-1"),
-                        0,
-                        Value::Char('a')
-                    ),
-                    DataCell::new(
-                        ValueType::String,
                         String::from("Header-2"),
                         1,
                         Value::String(String::from("BEE"))
-                    ),
-                    DataCell::new(ValueType::Int8, String::from("Header-3"), 2, Value::Int8(1)),
+                    )
+                    .unwrap(),
+                    DataCell::new(String::from("Header-3"), 2, Value::Int8(1)).unwrap(),
                     DataCell::new(
-                        ValueType::NaiveDate,
                         String::from("Header-4"),
                         3,
                         Value::parse_naive_date_from_str_iso8601_ymd("2022-01-01").unwrap()
-                    ),
+                    )
+                    .unwrap(),
                 ]
             },
             res_line01

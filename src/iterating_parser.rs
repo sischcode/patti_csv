@@ -226,12 +226,9 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
 
                     // TODO: do we want transitization on the headers!?
 
-                    let new_csv_cell = DataCell::new(
-                        ValueType::String,
-                        header_name.clone(),
-                        i,
-                        header_name.clone().into(),
-                    );
+                    let new_csv_cell =
+                        DataCell::new(header_name.clone(), i, header_name.clone().into())
+                            .expect("data is never None, so the type_info can always be inferred from data correctly");
                     csv_header_data_cell_row.push(new_csv_cell);
                 });
                 return Some(Ok(csv_header_data_cell_row));
@@ -282,7 +279,7 @@ impl<'rd, R: Read> Iterator for PattiCsvParserIterator<'rd, R> {
                 cell.data = match Value::from_str_and_type_with_chrono_pattern_with_none_map(
                     &curr_token,
                     &cell.dtype,
-                    curr_typing.chrono_pattern.as_ref().map(|e| e.as_str()),
+                    curr_typing.chrono_pattern.as_deref(),
                     curr_typing
                         .map_to_none
                         .as_ref()

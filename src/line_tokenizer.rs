@@ -104,8 +104,7 @@ impl<'rd, R: Read> DelimitedLineTokenizer<'rd, R> {
         if let Some(ref skip_take_lines) = self.skip_take_lines_fns {
             skip_take_lines
                 .iter()
-                .find(|&filter| filter.skip(Some(line_counter), Some(line))) // if at least one yields true, we need to skip (this line)
-                .is_some()
+                .any(|filter| filter.skip(Some(line_counter), Some(line)))
         } else {
             // If we have no filters, well, then don't skip anything.
             false
@@ -212,7 +211,7 @@ pub struct DelimitedLineTokenizerIter<'rd, R: Read> {
 
 impl<'rd, R: Read> DelimitedLineTokenizerIter<'rd, R> {
     pub fn save_skipped_lines(&self) -> bool {
-        *(&self.dlt.save_skipped_lines)
+        self.dlt.save_skipped_lines
     }
     pub fn get_skipped_lines(&self) -> &Vec<(usize, String)> {
         &self.skipped_lines
@@ -224,7 +223,7 @@ impl<'rd, R: Read> DelimitedLineTokenizerIter<'rd, R> {
         self.dlt.delim_char
     }
     pub fn get_encl_char(&self) -> Option<char> {
-        self.dlt.encl_char.clone()
+        self.dlt.encl_char
     }
 }
 
