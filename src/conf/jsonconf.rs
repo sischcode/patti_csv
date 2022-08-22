@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use venum::value_type::ValueType;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigRoot {
     pub comment: Option<String>,
@@ -11,7 +11,7 @@ pub struct ConfigRoot {
 }
 
 /// If skip and take options are present, the take filter overrules the skip filter.
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "Lines", rename_all = "camelCase")]
 pub struct ParserOptLines {
     pub comment: Option<String>,
@@ -23,7 +23,7 @@ pub struct ParserOptLines {
     pub skip_empty_lines: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "ParserOpts", rename_all = "camelCase")]
 pub struct ParserOpts {
     pub comment: Option<String>,
@@ -34,7 +34,7 @@ pub struct ParserOpts {
     pub save_skipped_lines: bool,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum TrimOpts {
     All,
@@ -42,21 +42,21 @@ pub enum TrimOpts {
     Trailing,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum CasingOpts {
     ToLower,
     ToUpper,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplaceColumnSanitizerEntry {
     pub from: String,
     pub to: String,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum SanitizeColumnOpts {
     Trim {
@@ -76,7 +76,7 @@ pub enum SanitizeColumnOpts {
     },
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SanitizeColumnsEntry {
     pub comment: Option<String>,
@@ -84,7 +84,7 @@ pub struct SanitizeColumnsEntry {
     pub sanitizers: Vec<SanitizeColumnOpts>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TypeColumnsEntry {
     pub header: Option<String>,

@@ -16,7 +16,7 @@ enum State {
     QuoteInQuotedField, // we need this to do proper escape checking of the enclosure character
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelimitedLineTokenizerStats {
     pub curr_line_num: usize, // needed for internal state while iterating
     pub lines_parsed: usize,  // needed for internal state while iterating

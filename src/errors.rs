@@ -3,12 +3,12 @@ use thiserror::Error;
 
 use venum::errors_result::VenumError;
 
-#[derive(Debug, PartialEq, Display, Clone)]
+#[derive(Debug, Display, PartialEq)]
 pub enum WrappedErrors {
     VenumError(VenumError),
 }
 
-#[derive(Debug, PartialEq, Display, Clone)]
+#[derive(Debug, Display, PartialEq)]
 pub enum PattiCsvError {
     Generic { msg: String },
     ConfigError { msg: String },
@@ -17,7 +17,7 @@ pub enum PattiCsvError {
     Sanitize(SanitizeError),
 }
 
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum TokenizerError {
     #[error("Enclosure character used in regular, non-enclosed field. Line: {line:?}, token_num: {token_num:?}")]
     IllegalEnclChar { line: usize, token_num: usize },
@@ -25,7 +25,7 @@ pub enum TokenizerError {
     UnescapedEnclChar { line: usize, token_num: usize },
 }
 
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq)]
 #[error("line: {line:?}, column: {column:?}, from_token: {from_token:?}, msg: {msg:?}")]
 pub struct SanitizeError {
     msg: String,
