@@ -206,10 +206,6 @@ impl DelimitedLineTokenizer {
         let mut res: VecDeque<String> = VecDeque::with_capacity(buf.len());
         buf.iter()
             .for_each(|cs| res.push_back(String::from(cs.as_str())));
-        buf.clear();
-
-        // buf.drain(..)
-        //     .for_each(|cs| res.push_back(String::from(cs.as_str())));
 
         Ok(res)
     }
@@ -282,11 +278,14 @@ impl<'dlt, 'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'dlt, 'rd, R> {
         }
         self.stats.lines_parsed += 1;
 
-        Some(self.dlt.tokenize(
+        let tok_res = self.dlt.tokenize(
             &mut self.line_token_buf,
             self.stats.curr_line_num,
             line.trim_end(),
-        ))
+        );
+        self.line_token_buf.clear();
+
+        Some(tok_res)
     }
 }
 
