@@ -9,8 +9,9 @@ use super::skip_take_lines::SkipTakeLines;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelimitedLineTokenizerStats {
-    pub curr_line_num: usize, // needed for internal state while iterating
-    pub lines_parsed: usize,  // needed for internal state while iterating
+    pub curr_line_num: usize,       // needed for internal state while iterating
+    pub num_lines_read: usize,      // needed for internal state while iterating
+    pub num_lines_tokenized: usize, // needed for internal state while iterating
     pub skipped_lines: Vec<(usize, Option<String>)>,
     pub bytes_read: usize,
 }
@@ -19,13 +20,14 @@ impl DelimitedLineTokenizerStats {
     pub fn new() -> Self {
         Self {
             curr_line_num: 0,
-            lines_parsed: 0,
+            num_lines_read: 0,
+            num_lines_tokenized: 0,
             skipped_lines: Vec::with_capacity(5),
             bytes_read: 0,
         }
     }
-    pub fn is_at_first_line_to_parse(&self) -> bool {
-        self.lines_parsed == 1
+    pub fn is_at_first_unskipped_line_to_parse(&self) -> bool {
+        self.num_lines_tokenized == 1
     }
 }
 
@@ -237,6 +239,7 @@ impl<'dlt, 'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'dlt, 'rd, R> {
                     return Some(Err(PattiCsvError::Generic { msg }));
                 }
             };
+            self.stats.num_lines_read += 1;
             self.stats.bytes_read += bytes_read.unwrap(); // unwrap is OK here, we checked every other path
 
             skip_this_line = self
@@ -255,13 +258,16 @@ impl<'dlt, 'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'dlt, 'rd, R> {
                 ));
             }
         }
-        self.stats.lines_parsed += 1;
 
         let tok_res = self.dlt.tokenize(
             &mut self.line_token_buf,
             self.stats.curr_line_num,
             line.trim_end(),
         );
+        if tok_res.is_ok() {
+            self.stats.num_lines_tokenized += 1;
+        }
+
         self.line_token_buf.clear();
 
         Some(tok_res)
@@ -501,12 +507,15 @@ mod tests {
         let res = dlt_iter.next().unwrap().unwrap();
         assert_eq!(res, vec!["a", "b", "c"]);
         assert_eq!(dlt_iter.get_stats().curr_line_num, 1);
-        assert_eq!(dlt_iter.get_stats().lines_parsed, 1);
-        assert_eq!(dlt_iter.get_stats().is_at_first_line_to_parse(), true);
+        assert_eq!(dlt_iter.get_stats().num_lines_tokenized, 1);
+        assert_eq!(
+            dlt_iter.get_stats().is_at_first_unskipped_line_to_parse(),
+            true
+        );
 
         let res = dlt_iter.next().unwrap().unwrap();
         assert_eq!(res, vec!["1", "2", "3"]);
-        assert_eq!(dlt_iter.get_stats().lines_parsed, 2);
+        assert_eq!(dlt_iter.get_stats().num_lines_tokenized, 2);
         assert_eq!(dlt_iter.get_stats().curr_line_num, 2);
 
         println!("{:?}", &dlt_iter.get_stats())

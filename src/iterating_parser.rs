@@ -353,19 +353,7 @@ mod tests {
         assert_eq!(parser.column_transitizers.unwrap().len(), 2);
     }
 
-    #[test]
-    fn test_iterating_parser_builder_defaults() {
-        let mut test_data_cursor = std::io::Cursor::new("");
-        let parser = PattiCsvParserBuilder::new()
-            .build(&mut test_data_cursor)
-            .unwrap();
-
-        assert_eq!(parser.get_delim_char(), ',');
-        assert_eq!(parser.get_encl_char(), Some('"'));
-        assert_eq!(parser.first_line_is_header(), true);
-        assert_eq!(parser.column_typings.len(), 0);
-        assert_eq!(parser.column_transitizers.is_none(), true);
-    }
+    
 
     #[test]
     fn test_parser_01() {

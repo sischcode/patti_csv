@@ -1098,6 +1098,41 @@ fn parse_no_transform_no_typings_benchmark(c: &mut Criterion) {
     });
 }
 
+fn parse_no_transform_no_typings_new() {
+    use patti_csv::{iterating_parser2::*}; 
+
+    let mut test_data_cursor = std::io::Cursor::new(TEST_STR);
+
+    let parser = PattiCsvParserBuilder::csv()
+        .stringly_type_columns(22)
+        .first_line_is_header(false)
+        .build()
+        .unwrap();
+
+    let mut iter = parser.parse_iter(&mut test_data_cursor);
+
+    while let Some(v) = iter.next() {
+        match v {
+            Ok(_) => (),
+            Err(e) => eprintln!("{:?}", e),
+        }
+    }
+}
+fn parse_no_transform_no_typings_benchmark_new(c: &mut Criterion) {
+    c.bench_function("parse_no_transform_no_typings_benchmark_new", |b| {
+        b.iter(|| {
+            parse_no_transform_no_typings_new();
+        })
+    });
+}
+
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-criterion_group!(benches, tokenize_benchmark, tokenizer_iter_tokenize_benchmark, tokenizer_iter_tokenize_benchmark_new, parse_no_transform_no_typings_benchmark);
+criterion_group!(
+    benches,
+    tokenize_benchmark,
+    tokenizer_iter_tokenize_benchmark,
+    tokenizer_iter_tokenize_benchmark_new,
+    parse_no_transform_no_typings_benchmark,
+    parse_no_transform_no_typings_benchmark_new
+);
 criterion_main!(benches);

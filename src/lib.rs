@@ -1,6 +1,7 @@
 pub mod conf;
 pub mod errors;
 pub mod iterating_parser;
+pub mod iterating_parser2;
 pub mod line_tokenizer; // works, tested
 pub mod line_tokenizer2; // works, tested
 pub mod parser_common; // works, tested
