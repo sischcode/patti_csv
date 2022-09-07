@@ -84,7 +84,7 @@ impl DelimitedLineTokenizer {
         )
     }
 
-    pub fn tab(
+    pub fn tsv(
         skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
         save_skipped_lines: bool,
         hint_num_tokens: Option<usize>,
@@ -433,91 +433,103 @@ mod tests {
         test_it("\"\"\"\"\"f,o,o\"\"\"\"\"", vec!["\"\"f,o,o\"\""]);
     }
 
-    // #[test]
-    // fn enclosing_with_enclosing_char_not_properly_escaped() {
-    //     let mut test_data_cursor = std::io::Cursor::new("foo,\"bar\"\",baz");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false).into_iter();
-    //     let res = dlt_iter.next().unwrap();
-    //     assert_eq!(
-    //         Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
-    //             line: 1,
-    //             token_num: 2
-    //         })),
-    //         res
-    //     );
-    // }
+    #[test]
+    fn enclosing_with_enclosing_char_not_properly_escaped() {
+        let mut test_data_cursor = std::io::Cursor::new("foo,\"bar\"\",baz");
 
-    // #[test]
-    // fn enclosing_char_in_unenclosed_field() {
-    //     let mut test_data_cursor = std::io::Cursor::new("f\"oo,bar");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false).into_iter();
-    //     let res = dlt_iter.next().unwrap();
-    //     assert_eq!(
-    //         Err(PattiCsvError::Tokenize(TokenizerError::IllegalEnclChar {
-    //             line: 1,
-    //             token_num: 1
-    //         })),
-    //         res
-    //     );
-    // }
+        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+        let res = dlt_iter.next().unwrap();
 
-    // #[test]
-    // fn tab_separated_simple() {
-    //     let mut test_data_cursor = std::io::Cursor::new("foo\tb\"a'r\tb|az");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::tab(&mut test_data_cursor, None, false).into_iter();
-    //     let res = dlt_iter.next().unwrap();
-    //     assert_eq!(res.unwrap(), vec!["foo", "b\"a'r", "b|az"]);
-    // }
+        assert_eq!(
+            Err(PattiCsvError::Tokenize(TokenizerError::UnescapedEnclChar {
+                line: 1,
+                token_num: 2
+            })),
+            res
+        );
+    }
 
-    // #[test]
-    // /// doesn't really work correctly, or does it?
-    // fn tab_separated_simple_enclosed() {
-    //     let mut test_data_cursor = std::io::Cursor::new("foo\t\"b\tar\"\tbaz");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::new(&mut test_data_cursor, '\t', Some('"'), None, false)
-    //             .into_iter();
-    //     let res = dlt_iter.next().unwrap();
-    //     assert_eq!(res.unwrap(), vec!["foo", "b\tar", "baz"]);
-    // }
+    #[test]
+    fn enclosing_char_in_unenclosed_field() {
+        let mut test_data_cursor = std::io::Cursor::new("f\"oo,bar");
 
-    // #[test]
-    // fn pipe_separated_simple_enclosed() {
-    //     let mut test_data_cursor = std::io::Cursor::new("foo|\"b|ar\"|baz");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::new(&mut test_data_cursor, '|', Some('"'), None, false)
-    //             .into_iter();
-    //     let res = dlt_iter.next().unwrap();
-    //     assert_eq!(res.unwrap(), vec!["foo", "b|ar", "baz"]);
-    // }
+        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+        let res = dlt_iter.next().unwrap();
 
-    // #[test]
-    // fn pipe_separated_simple_enclosed2() {
-    //     let mut test_data_cursor = std::io::Cursor::new("foo|'b|ar'|baz");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::new(&mut test_data_cursor, '|', Some('\''), None, false)
-    //             .into_iter();
-    //     let res = dlt_iter.next().unwrap();
-    //     assert_eq!(res.unwrap(), vec!["foo", "b|ar", "baz"]);
-    // }
+        assert_eq!(
+            Err(PattiCsvError::Tokenize(TokenizerError::IllegalEnclChar {
+                line: 1,
+                token_num: 1
+            })),
+            res
+        );
+    }
 
-    // #[test]
-    // fn multiple_lines_test_simple() {
-    //     let mut test_data_cursor = std::io::Cursor::new("a,b,c\n1,2,3");
-    //     let mut dlt_iter =
-    //         DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false).into_iter();
+    #[test]
+    fn tab_separated_simple() {
+        let mut test_data_cursor = std::io::Cursor::new("foo\tb\"a'r\tb|az");
 
-    //     let res = dlt_iter.next().unwrap().unwrap();
-    //     assert_eq!(res, vec!["a", "b", "c"]);
-    //     assert_eq!(dlt_iter.get_stats().curr_line_num, 1);
-    //     assert_eq!(dlt_iter.get_stats().is_at_first_line_to_parse(), true);
+        let dlt = DelimitedLineTokenizer::tsv(None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+        let res = dlt_iter.next().unwrap().unwrap();
 
-    //     let res = dlt_iter.next().unwrap().unwrap();
-    //     assert_eq!(res, vec!["1", "2", "3"]);
-    //     assert_eq!(dlt_iter.get_stats().curr_line_num, 2);
+        assert_eq!(res, vec!["foo", "b\"a'r", "b|az"]);
+    }
 
-    //     // println!("{:?}", &dlt_iter.get_stats())
-    // }
+    #[test]
+    /// doesn't really work correctly, or does it?
+    fn tab_separated_simple_enclosed() {
+        let mut test_data_cursor = std::io::Cursor::new("foo\t\"b\tar\"\tbaz");
+
+        let dlt = DelimitedLineTokenizer::new('\t', Some('"'), None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+
+        let res = dlt_iter.next().unwrap().unwrap();
+        assert_eq!(res, vec!["foo", "b\tar", "baz"]);
+    }
+
+    #[test]
+    fn pipe_separated_simple_enclosed() {
+        let mut test_data_cursor = std::io::Cursor::new("foo|\"b|ar\"|baz");
+
+        let dlt = DelimitedLineTokenizer::new('|', Some('"'), None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+        let res = dlt_iter.next().unwrap().unwrap();
+
+        assert_eq!(res, vec!["foo", "b|ar", "baz"]);
+    }
+
+    #[test]
+    fn pipe_separated_simple_enclosed2() {
+        let mut test_data_cursor = std::io::Cursor::new("foo|'b|ar'|baz");
+
+        let dlt = DelimitedLineTokenizer::new('|', Some('\''), None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+        let res = dlt_iter.next().unwrap().unwrap();
+
+        assert_eq!(res, vec!["foo", "b|ar", "baz"]);
+    }
+
+    #[test]
+    fn multiple_lines_test_simple() {
+        let mut test_data_cursor = std::io::Cursor::new("a,b,c\n1,2,3");
+
+        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+
+        let res = dlt_iter.next().unwrap().unwrap();
+        assert_eq!(res, vec!["a", "b", "c"]);
+        assert_eq!(dlt_iter.get_stats().curr_line_num, 1);
+        assert_eq!(dlt_iter.get_stats().lines_parsed, 1);
+        assert_eq!(dlt_iter.get_stats().is_at_first_line_to_parse(), true);
+
+        let res = dlt_iter.next().unwrap().unwrap();
+        assert_eq!(res, vec!["1", "2", "3"]);
+        assert_eq!(dlt_iter.get_stats().lines_parsed, 2);
+        assert_eq!(dlt_iter.get_stats().curr_line_num, 2);
+
+        println!("{:?}", &dlt_iter.get_stats())
+    }
 }

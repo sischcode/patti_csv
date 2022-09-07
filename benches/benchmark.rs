@@ -1048,6 +1048,29 @@ fn tokenizer_iter_tokenize_benchmark(c: &mut Criterion) {
     });
 }
 
+fn tokenizer_iter_tokenize_new() {
+    use patti_csv::{line_tokenizer2::DelimitedLineTokenizer}; 
+
+    let mut test_data_cursor = std::io::Cursor::new(TEST_STR);
+
+    let dlt = DelimitedLineTokenizer::csv(None, false, None);
+    let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+    
+    while let Some(v) = dlt_iter.next() {
+        match v {
+            Ok(_) => (),
+            Err(e) => eprintln!("{:?}", e),
+        }
+    }
+}
+fn tokenizer_iter_tokenize_benchmark_new(c: &mut Criterion) {
+    c.bench_function("tokenizer_iter_tokenize_benchmark_new", |b| {
+        b.iter(|| {
+            tokenizer_iter_tokenize_new();
+        })
+    });
+}
+
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 fn parse_no_transform_no_typings() {
@@ -1076,5 +1099,5 @@ fn parse_no_transform_no_typings_benchmark(c: &mut Criterion) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-criterion_group!(benches, tokenize_benchmark, tokenizer_iter_tokenize_benchmark, parse_no_transform_no_typings_benchmark);
+criterion_group!(benches, tokenize_benchmark, tokenizer_iter_tokenize_benchmark, tokenizer_iter_tokenize_benchmark_new, parse_no_transform_no_typings_benchmark);
 criterion_main!(benches);
