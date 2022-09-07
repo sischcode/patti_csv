@@ -49,7 +49,6 @@ pub struct DelimitedLineTokenizer {
     pub delim_char: char,
     pub encl_char: Option<char>,
     pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
-    pub hint_num_tokens: Option<usize>,
 }
 
 impl DelimitedLineTokenizer {
@@ -58,7 +57,6 @@ impl DelimitedLineTokenizer {
         enclc: Option<char>,
         skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
         save_skipped_lines: bool,
-        hint_num_tokens: Option<usize>,
     ) -> Self {
         DelimitedLineTokenizer {
             max_inline_str_size: std::mem::size_of::<String>(),
@@ -66,43 +64,28 @@ impl DelimitedLineTokenizer {
             delim_char: delim,
             encl_char: enclc,
             skip_take_lines_fns,
-            hint_num_tokens,
         }
     }
 
     pub fn csv(
         skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
         save_skipped_lines: bool,
-        hint_num_tokens: Option<usize>,
     ) -> Self {
-        DelimitedLineTokenizer::new(
-            ',',
-            Some('"'),
-            skip_take_lines_fns,
-            save_skipped_lines,
-            hint_num_tokens,
-        )
+        DelimitedLineTokenizer::new(',', Some('"'), skip_take_lines_fns, save_skipped_lines)
     }
 
     pub fn tsv(
         skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
         save_skipped_lines: bool,
-        hint_num_tokens: Option<usize>,
     ) -> Self {
-        DelimitedLineTokenizer::new(
-            '\t',
-            None,
-            skip_take_lines_fns,
-            save_skipped_lines,
-            hint_num_tokens,
-        )
+        DelimitedLineTokenizer::new('\t', None, skip_take_lines_fns, save_skipped_lines)
     }
 
     pub fn tokenize_iter<'dlt, 'rd, R: Read>(
         &'dlt self,
         data: &'rd mut R,
     ) -> DelimitedLineTokenizerIter<'dlt, 'rd, R> {
-        DelimitedLineTokenizerIter::new(self, data, self.hint_num_tokens)
+        DelimitedLineTokenizerIter::new(self, data)
     }
 
     fn skip_line_by_skiptake_sanitizer(&self, line_counter: usize, line: &String) -> bool {
@@ -219,16 +202,12 @@ pub struct DelimitedLineTokenizerIter<'dlt, 'rd, R: Read> {
 }
 
 impl<'dlt, 'rd, R: Read> DelimitedLineTokenizerIter<'dlt, 'rd, R> {
-    pub fn new(
-        dlt: &'dlt DelimitedLineTokenizer,
-        data: &'rd mut R,
-        num_token_hint: Option<usize>,
-    ) -> Self {
+    pub fn new(dlt: &'dlt DelimitedLineTokenizer, data: &'rd mut R) -> Self {
         Self {
             dlt,
             buf_raw_data: BufReader::new(data),
             stats: DelimitedLineTokenizerStats::default(),
-            line_token_buf: Vec::with_capacity(num_token_hint.unwrap_or(15)),
+            line_token_buf: Vec::with_capacity(10), // we default hard to 10 because, well, we gotta start somewhere
         }
     }
 
@@ -297,7 +276,7 @@ mod tests {
     fn empty() {
         let mut test_data_cursor = std::io::Cursor::new("");
 
-        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let dlt = DelimitedLineTokenizer::csv(None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
         let res = dlt_iter.next();
 
@@ -305,7 +284,7 @@ mod tests {
     }
 
     fn test_it(inp: &str, exp: Vec<&str>) {
-        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let dlt = DelimitedLineTokenizer::csv(None, false);
 
         let mut test_data_cursor = std::io::Cursor::new(inp);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
@@ -437,7 +416,7 @@ mod tests {
     fn enclosing_with_enclosing_char_not_properly_escaped() {
         let mut test_data_cursor = std::io::Cursor::new("foo,\"bar\"\",baz");
 
-        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let dlt = DelimitedLineTokenizer::csv(None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
         let res = dlt_iter.next().unwrap();
 
@@ -454,7 +433,7 @@ mod tests {
     fn enclosing_char_in_unenclosed_field() {
         let mut test_data_cursor = std::io::Cursor::new("f\"oo,bar");
 
-        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let dlt = DelimitedLineTokenizer::csv(None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
         let res = dlt_iter.next().unwrap();
 
@@ -471,7 +450,7 @@ mod tests {
     fn tab_separated_simple() {
         let mut test_data_cursor = std::io::Cursor::new("foo\tb\"a'r\tb|az");
 
-        let dlt = DelimitedLineTokenizer::tsv(None, false, None);
+        let dlt = DelimitedLineTokenizer::tsv(None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
         let res = dlt_iter.next().unwrap().unwrap();
 
@@ -483,7 +462,7 @@ mod tests {
     fn tab_separated_simple_enclosed() {
         let mut test_data_cursor = std::io::Cursor::new("foo\t\"b\tar\"\tbaz");
 
-        let dlt = DelimitedLineTokenizer::new('\t', Some('"'), None, false, None);
+        let dlt = DelimitedLineTokenizer::new('\t', Some('"'), None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
 
         let res = dlt_iter.next().unwrap().unwrap();
@@ -494,7 +473,7 @@ mod tests {
     fn pipe_separated_simple_enclosed() {
         let mut test_data_cursor = std::io::Cursor::new("foo|\"b|ar\"|baz");
 
-        let dlt = DelimitedLineTokenizer::new('|', Some('"'), None, false, None);
+        let dlt = DelimitedLineTokenizer::new('|', Some('"'), None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
         let res = dlt_iter.next().unwrap().unwrap();
 
@@ -505,7 +484,7 @@ mod tests {
     fn pipe_separated_simple_enclosed2() {
         let mut test_data_cursor = std::io::Cursor::new("foo|'b|ar'|baz");
 
-        let dlt = DelimitedLineTokenizer::new('|', Some('\''), None, false, None);
+        let dlt = DelimitedLineTokenizer::new('|', Some('\''), None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
         let res = dlt_iter.next().unwrap().unwrap();
 
@@ -516,7 +495,7 @@ mod tests {
     fn multiple_lines_test_simple() {
         let mut test_data_cursor = std::io::Cursor::new("a,b,c\n1,2,3");
 
-        let dlt = DelimitedLineTokenizer::csv(None, false, None);
+        let dlt = DelimitedLineTokenizer::csv(None, false);
         let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
 
         let res = dlt_iter.next().unwrap().unwrap();

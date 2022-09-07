@@ -1053,7 +1053,7 @@ fn tokenizer_iter_tokenize_new() {
 
     let mut test_data_cursor = std::io::Cursor::new(TEST_STR);
 
-    let dlt = DelimitedLineTokenizer::csv(None, false, None);
+    let dlt = DelimitedLineTokenizer::csv(None, false);
     let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
     
     while let Some(v) = dlt_iter.next() {
