@@ -2,7 +2,7 @@ use venum::value_type::ValueType;
 
 use super::transform_sanitize_token::*;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeColumnEntry {
     pub header: Option<String>,
     pub target_type: ValueType,

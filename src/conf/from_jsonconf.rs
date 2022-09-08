@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{BufRead, BufReader, Read},
-};
+use std::collections::HashMap;
 
 use crate::{
     conf::jsonconf::{self, *},
@@ -94,9 +90,10 @@ impl TryFrom<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTok
 
 impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
     fn from(tce: &mut TypeColumnsEntry) -> Self {
-        let src_pattern_opt = tce.src_pattern.as_mut();
+        let src_chrono_pattern_opt = tce.src_pattern.as_mut();
         let map_to_none_opt = tce.map_to_none.as_mut();
-        match (src_pattern_opt, map_to_none_opt) {
+
+        match (src_chrono_pattern_opt, map_to_none_opt) {
             (None, None) => TypeColumnEntry::new(
                 std::mem::take(&mut tce.header),
                 std::mem::take(&mut tce.target_type),
@@ -123,27 +120,28 @@ impl From<&mut TypeColumnsEntry> for TypeColumnEntry {
     }
 }
 
-impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
+impl TryFrom<ConfigRoot> for PattiCsvParser {
     type Error = PattiCsvError;
 
     fn try_from(cfg: ConfigRoot) -> Result<Self> {
-        let mut builder = PattiCsvParserBuilder::new();
-        builder
+        let mut builder = PattiCsvParserBuilder::new()
             .enclosure_char(cfg.parser_opts.enclosure_char)
             .separator_char(cfg.parser_opts.separator_char)
-            .first_line_is_header(cfg.parser_opts.first_line_is_header);
+            .first_data_line_is_header(cfg.parser_opts.first_line_is_header);
 
         if let Some(mut san) = cfg.sanitize_columns {
-            let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+            let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> =
+                HashMap::with_capacity(san.len());
 
             san.iter_mut().try_for_each(|e| -> Result<()> {
-                let f: (Option<usize>, TransformSanitizeTokens) = e.try_into()?;
-                transitizers.insert(f.0, f.1);
+                let (opt_line_num, ts_tokens): (Option<usize>, TransformSanitizeTokens) =
+                    e.try_into()?;
+                transitizers.insert(opt_line_num, ts_tokens);
                 Ok(())
             })?;
 
             if !transitizers.is_empty() {
-                builder.column_transitizers(transitizers);
+                builder = builder.column_transitizers(transitizers);
             }
         }
 
@@ -155,10 +153,6 @@ impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
             }
             if let Some(v) = skip_take_lines_cfg.skip_lines_from_start {
                 skip_take_lines.push(Box::new(SkipLinesFromStart { skip_num_lines: v }));
-            }
-            if skip_take_lines_cfg.skip_lines_from_end.is_some() {
-                return Err(PattiCsvError::Generic { msg: String::from("skipLinesFromEnd / skip_lines_from_end only works for R:Read = File, which we cannot guarantee here. Try 'patti_csv_file_parser_from' instead.") });
-                // TODO is there a better way?
             }
             if let Some(mut v) = skip_take_lines_cfg.skip_lines_by_startswith {
                 v.iter_mut().for_each(|e| {
@@ -176,7 +170,7 @@ impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
             }
 
             if !skip_take_lines.is_empty() {
-                builder.skip_take_lines_fns(skip_take_lines);
+                builder = builder.skip_take_lines_fns(skip_take_lines);
             }
         }
 
@@ -185,96 +179,11 @@ impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R> {
                 .iter_mut()
                 .map(TypeColumnEntry::from)
                 .collect();
-            builder.column_typings(col_typings);
+            builder = builder.column_typings(col_typings);
         }
-        Ok(builder)
+
+        builder.build()
     }
-}
-
-impl<'rd, R: Read> TryFrom<(&'rd mut R, ConfigRoot)> for PattiCsvParser<'rd, R> {
-    type Error = PattiCsvError;
-
-    fn try_from(data_config_tuple: (&'rd mut R, ConfigRoot)) -> Result<Self> {
-        let (src, cfg) = data_config_tuple;
-
-        let mut builder: PattiCsvParserBuilder<R> = PattiCsvParserBuilder::try_from(cfg)?;
-
-        builder.build(src)
-    }
-}
-
-// TODO: there is currently a LOT of duplication here. See the upper: impl<R: Read> TryFrom<ConfigRoot> for PattiCsvParserBuilder<R>
-// I haven't figured out yet how to "split" between Instances that impl Read and are NOT a file, and those that are.
-pub fn patti_csv_file_parser_from(cfg: ConfigRoot, f: &mut File) -> Result<PattiCsvParser<File>> {
-    let mut builder: PattiCsvParserBuilder<File> = PattiCsvParserBuilder::new();
-    builder
-        .enclosure_char(cfg.parser_opts.enclosure_char)
-        .separator_char(cfg.parser_opts.separator_char)
-        .first_line_is_header(cfg.parser_opts.first_line_is_header)
-        .save_skipped_lines(cfg.parser_opts.save_skipped_lines);
-
-    if let Some(mut san) = cfg.sanitize_columns {
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
-
-        san.iter_mut().try_for_each(|e| -> Result<()> {
-            let f: (Option<usize>, TransformSanitizeTokens) = e.try_into()?;
-            transitizers.insert(f.0, f.1);
-            Ok(())
-        })?;
-
-        if !transitizers.is_empty() {
-            builder.column_transitizers(transitizers);
-        }
-    }
-
-    if let Some(skip_take_lines_cfg) = cfg.parser_opts.lines {
-        let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
-
-        if let Some(true) = skip_take_lines_cfg.skip_empty_lines {
-            skip_take_lines.push(Box::new(SkipEmptyLines {}));
-        }
-        if let Some(v) = skip_take_lines_cfg.skip_lines_from_start {
-            skip_take_lines.push(Box::new(SkipLinesFromStart { skip_num_lines: v }));
-        }
-        if let Some(v) = skip_take_lines_cfg.skip_lines_from_end {
-            let f_clone = f.try_clone().map_err(|e| PattiCsvError::Generic {
-                msg: format!("{e}"),
-            })?;
-
-            skip_take_lines.push(Box::new(SkipLinesFromEnd {
-                skip_num_lines: v,
-                lines_total: BufReader::new(f_clone).lines().count(),
-            }))
-        }
-        if let Some(mut v) = skip_take_lines_cfg.skip_lines_by_startswith {
-            v.iter_mut().for_each(|e| {
-                skip_take_lines.push(Box::new(SkipLinesStartingWith {
-                    starts_with: std::mem::take(e),
-                }))
-            });
-        }
-        if let Some(mut v) = skip_take_lines_cfg.take_lines_by_startswith {
-            v.iter_mut().for_each(|e| {
-                skip_take_lines.push(Box::new(TakeLinesStartingWith {
-                    starts_with: std::mem::take(e),
-                }))
-            });
-        }
-
-        if !skip_take_lines.is_empty() {
-            builder.skip_take_lines_fns(skip_take_lines);
-        }
-    }
-
-    if let Some(mut col_typings_cfg) = cfg.type_columns {
-        let col_typings = col_typings_cfg
-            .iter_mut()
-            .map(TypeColumnEntry::from)
-            .collect();
-        builder.column_typings(col_typings);
-    }
-
-    builder.build(f)
 }
 
 #[cfg(test)]
@@ -410,8 +319,8 @@ mod tests {
             "# some bullshit\n\n-some bullshit again\na,b,c,d\n A, BEE , 1 , 2022-01-01 ";
         let mut test_data_cursor = std::io::Cursor::new(data_str);
 
-        let parser = PattiCsvParser::try_from((&mut test_data_cursor, cfg)).unwrap();
-        let mut iter = parser.into_iter();
+        let parser = PattiCsvParser::try_from(cfg).unwrap();
+        let mut iter = parser.parse_iter(&mut test_data_cursor);
 
         let res_header = iter.next().unwrap().unwrap(); // first unwrap is from the iter, second one is our result
         let res_line01 = iter.next().unwrap().unwrap(); // first unwrap is from the iter, second one is our result

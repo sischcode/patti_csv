@@ -20,23 +20,6 @@ impl SkipTakeLines for SkipLinesFromStart {
 }
 
 #[derive(Debug)]
-pub struct SkipLinesFromEnd {
-    pub skip_num_lines: usize,
-    pub lines_total: usize,
-}
-impl SkipTakeLines for SkipLinesFromEnd {
-    fn skip(&self, line_num: Option<usize>, _line_content: Option<&str>) -> bool {
-        match line_num {
-            Some(ln) => ln > self.lines_total - self.skip_num_lines,
-            None => false,
-        }
-    }
-    fn get_self_info(&self) -> String {
-        format!("{self:?}")
-    }
-}
-
-#[derive(Debug)]
 pub struct SkipLinesStartingWith {
     pub starts_with: String,
 }
@@ -109,25 +92,6 @@ mod tests {
 
         assert_eq![
             vec![true, false, false, false, false, false, false],
-            to_skip
-        ];
-    }
-
-    #[test]
-    fn skip_one_lines_from_end() {
-        let csv = test_data_01();
-        let check_line = SkipLinesFromEnd {
-            skip_num_lines: 1,
-            lines_total: csv.len() as usize,
-        };
-        let to_skip = csv
-            .iter()
-            .enumerate()
-            .map(|(i, &s)| check_line.skip(Some(i + 1), Some(s)))
-            .collect::<Vec<bool>>();
-
-        assert_eq![
-            vec![false, false, false, false, false, false, true],
             to_skip
         ];
     }

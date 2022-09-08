@@ -30,10 +30,9 @@ This is how the parser can be configured.
     "lines": {                                      //    (optional)
         "comment": "Some optional explanation",     // 4) (optional)
         "skipLinesFromStart": 3,                    // 5) (optional)
-        "skipLinesFromEnd": 1,                      // 6) (optional)
-        "skipLinesByStartswith": ["#", "-"],        // 7) (optional)
-        "takeLinesByStartswith": ["\""],            // 8) (optional)
-        "skipEmptyLines": true                      // 9) (optional)
+        "skipLinesByStartswith": ["#", "-"],        // 6) (optional)
+        "takeLinesByStartswith": ["\""],            // 7) (optional)
+        "skipEmptyLines": true                      // 8) (optional)
     },
     "firstLineIsHeader": true                       // 10) (mandatory)
 },
@@ -44,11 +43,10 @@ This is how the parser can be configured.
 3. TODO: The enclosure character used (any defaults here?)
 4. A comment describing why it's configured the way it is.
 5. How many lines should be skipped from start of the file (1-indexed)
-6. How many lines should be skipped from end of the file (1-indexed). **CAUTION: This does _only_ work for Files and is a rather expensive operation. If you can get the same result by using `skipLinesByStartswith` or `takeLinesByStartswith` you should!.**
-7. Skip lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
-8. Only take lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
-9. Skip empty lines
-10. Is the first line we read (**after** skipping/taking) a header line?
+6. Skip lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
+7. Only take lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
+8. Skip empty lines
+9. Is the first line we read (**after** skipping/taking) a header line?
 
 ## `sanitizeColumns` - Column Sanitization Configuration
 Some arguments can be found for and against having some transformation capabilities **in** the parser.

@@ -1007,32 +1007,25 @@ const TEST_STR: &str =
 const TEST_STR_ABC: &str = "a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz,a,\"ab\",abc,\"abcd\",abcde,\"abcdef\",abcdefg,\"abcdefgh\",abcdefghi,\"abcdefghij\",abcdefghijk,\"abcdefghijkl\",abcdefghijklm,\"abcdefghijklmn\",abcdefghijklmno,\"abcdefghijklmnop\",abcdefghijklmnopq,\"abcdefghijklmnopqr\",abcdefghijklmnopqrs,abcdefghijklmnopqrst,\"abcdefghijklmnopqrstu\",abcdefghijklmnopqrstuv,\"abcdefghijklmn\"\"opqrstuvw\",abcdefghijklmnopqrstuvwx,abcdefghijklmnopqrstuvwxy,abcdefghijklmnopqrstuvwxyz";
 
 // the .tokenize functions are usually not accessible. We need to add a pub to them to bench it.
-fn tokenize() {
-    let mut test_data_cursor = std::io::Cursor::new("");
-    let mut dlt = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false);
+fn tokenizer_tokenize() {
+    let dlt = DelimitedLineTokenizer::csv(None, false);
     dlt.tokenize(1, TEST_STR_ABC).unwrap();
-    dlt.tokenize(2, TEST_STR_ABC).unwrap();
-    dlt.tokenize(3, TEST_STR_ABC).unwrap();
-    dlt.tokenize(4, TEST_STR_ABC).unwrap();
-    dlt.tokenize(5, TEST_STR_ABC).unwrap();
-    dlt.tokenize(6, TEST_STR_ABC).unwrap();
-    dlt.tokenize(7, TEST_STR_ABC).unwrap();
-    dlt.tokenize(8, TEST_STR_ABC).unwrap();
-    dlt.tokenize(9, TEST_STR_ABC).unwrap();
-    dlt.tokenize(10, TEST_STR_ABC).unwrap();
 }
-fn tokenize_benchmark(c: &mut Criterion) {
+fn bench_tokenizer_tokenize(c: &mut Criterion) {
     let mut group = c.benchmark_group("Tokenize");
     group.sample_size(1000);
-    group.bench_function(BenchmarkId::new("tokenize (curr)", 2), |b| b.iter(|| tokenize()));
+    group.bench_function(BenchmarkId::new("tokenizer_tokenize (1 line)", 2), |b| b.iter(|| tokenizer_tokenize()));
     group.finish();
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-fn tokenizer_iter_tokenize() {
+fn tokenizer_tokenize_iter() {
     let mut test_data_cursor = std::io::Cursor::new(TEST_STR);
-    let mut dlt_iter = DelimitedLineTokenizer::csv(&mut test_data_cursor, None, false).into_iter();
+
+    let dlt = DelimitedLineTokenizer::csv(None, false);
+    let mut dlt_iter = dlt.tokenize_iter(&mut test_data_cursor);
+    
     while let Some(v) = dlt_iter.next() {
         match v {
             Ok(_) => (),
@@ -1040,25 +1033,26 @@ fn tokenizer_iter_tokenize() {
         }
     }
 }
-fn tokenizer_iter_tokenize_benchmark(c: &mut Criterion) {
+fn bench_tokenizer_tokenize_iter(c: &mut Criterion) {
     c.bench_function("tokenizer_iter_tokenize_benchmark", |b| {
         b.iter(|| {
-            tokenizer_iter_tokenize();
+            tokenizer_tokenize_iter();
         })
     });
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-fn parse_no_transform_no_typings() {
+fn patti_parse_iter_no_transform_stringly_typing() {
     let mut test_data_cursor = std::io::Cursor::new(TEST_STR);
 
-    let parser = PattiCsvParserBuilder::new()
-        .first_line_is_header(false)
-        .build(&mut test_data_cursor)
+    let parser = PattiCsvParserBuilder::csv()
+        .stringly_type_columns(22)
+        .first_data_line_is_header(false)
+        .build()
         .unwrap();
 
-    let mut iter = parser.into_iter();
+    let mut iter = parser.parse_iter(&mut test_data_cursor);
 
     while let Some(v) = iter.next() {
         match v {
@@ -1067,14 +1061,19 @@ fn parse_no_transform_no_typings() {
         }
     }
 }
-fn parse_no_transform_no_typings_benchmark(c: &mut Criterion) {
-    c.bench_function("parse_no_transform_no_typings_benchmark", |b| {
+fn bench_patti_parse_iter_no_transform_stringly_typing(c: &mut Criterion) {
+    c.bench_function("patti_parse_iter_no_transform_stringly_typing", |b| {
         b.iter(|| {
-            parse_no_transform_no_typings();
+            patti_parse_iter_no_transform_stringly_typing();
         })
     });
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-criterion_group!(benches, tokenize_benchmark, tokenizer_iter_tokenize_benchmark, parse_no_transform_no_typings_benchmark);
+criterion_group!(
+    benches,
+    bench_tokenizer_tokenize,
+    bench_tokenizer_tokenize_iter,
+    bench_patti_parse_iter_no_transform_stringly_typing,
+);
 criterion_main!(benches);
