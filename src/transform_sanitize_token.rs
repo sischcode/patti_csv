@@ -1,5 +1,6 @@
-use crate::errors::{PattiCsvError, Result, SanitizeError};
 use regex::Regex;
+
+use crate::errors::{PattiCsvError, Result, SanitizeError};
 
 pub trait TransformSanitizeToken {
     fn transitize(&self, input_token: &str) -> Result<String>;

@@ -16,10 +16,8 @@ pub struct ConfigRoot {
 pub struct ParserOptLines {
     pub comment: Option<String>,
     pub skip_lines_from_start: Option<usize>,
-    pub skip_lines_from_end: Option<usize>,
     pub skip_lines_by_startswith: Option<Vec<String>>,
-    pub take_lines_by_startswith: Option<Vec<String>>,
-    // TODO: skip_lines_by_regex & take_lines_by_regex
+    pub skip_lines_by_regex: Option<Vec<String>>,
     pub skip_empty_lines: Option<bool>,
 }
 
@@ -171,7 +169,7 @@ mod tests {
             "skipLinesFromStart": 1,
             "skipLinesFromEnd": 1,
             "skipLinesByStartswith": ["foo", "-"],
-            "takeLinesByStartswith": ["bar"],
+            "skipLinesByRegex": ["bar.*"],
             "skipEmptyLines": true
         }
         "#;
@@ -179,9 +177,8 @@ mod tests {
             ParserOptLines {
                 comment: Some("We do this, because...".to_string()),
                 skip_lines_from_start: Some(1),
-                skip_lines_from_end: Some(1),
                 skip_lines_by_startswith: Some(vec!["foo".to_string(), "-".to_string()]),
-                take_lines_by_startswith: Some(vec!["bar".to_string()]),
+                skip_lines_by_regex: Some(vec!["bar.*".to_string()]),
                 skip_empty_lines: Some(true),
             },
             serde_json::from_str(data).expect("could not deserialize ")
@@ -386,7 +383,6 @@ mod tests {
                 "lines": {
                     "comment": "Some optional explanation",
                     "skipLinesFromStart": 1,
-                    "skipLinesFromEnd": 1,
                     "skipLinesByStartswith": ["#", "-"],
                     "skipEmptyLines": true
                 },
@@ -432,10 +428,9 @@ mod tests {
                 lines: Some(ParserOptLines {
                     comment: Some(String::from("Some optional explanation")),
                     skip_lines_from_start: Some(1 as usize),
-                    skip_lines_from_end: Some(1 as usize),
                     skip_empty_lines: Some(true),
                     skip_lines_by_startswith: Some(vec![String::from("#"), String::from("-")]),
-                    take_lines_by_startswith: None,
+                    skip_lines_by_regex: None,
                 }),
                 first_line_is_header: true,
                 save_skipped_lines: false,

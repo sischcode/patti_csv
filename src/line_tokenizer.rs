@@ -95,7 +95,7 @@ impl DelimitedLineTokenizer {
         if let Some(ref skip_take_lines) = self.skip_take_lines_fns {
             skip_take_lines
                 .iter()
-                .any(|filter| filter.skip(Some(line_counter), Some(line)))
+                .any(|filter| filter.skip(line_counter, line))
         } else {
             // If we have no filters, well, then don't skip anything.
             false
