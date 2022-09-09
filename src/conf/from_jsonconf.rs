@@ -161,12 +161,11 @@ impl TryFrom<ConfigRoot> for PattiCsvParser {
                     }))
                 });
             }
-            if let Some(mut v) = skip_take_lines_cfg.take_lines_by_startswith {
-                v.iter_mut().for_each(|e| {
-                    skip_take_lines.push(Box::new(TakeLinesStartingWith {
-                        starts_with: std::mem::take(e),
-                    }))
-                });
+            if let Some(v) = skip_take_lines_cfg.skip_lines_by_regex {
+                for c in v.iter() {
+                    let tmp = SkipLinesByRegex::new(c)?;
+                    skip_take_lines.push(Box::new(tmp))
+                }
             }
 
             if !skip_take_lines.is_empty() {
@@ -272,8 +271,7 @@ mod tests {
                     skip_lines_from_start: Some(1_usize),
                     skip_empty_lines: Some(true),
                     skip_lines_by_startswith: Some(vec![String::from("#"), String::from("-")]),
-                    take_lines_by_startswith: None,
-                    skip_lines_from_end: None,
+                    skip_lines_by_regex: None,
                 }),
                 first_line_is_header: true,
                 save_skipped_lines: false,

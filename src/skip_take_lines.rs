@@ -1,5 +1,9 @@
+use regex::Regex;
+
+use crate::errors::{PattiCsvError, Result};
+
 pub trait SkipTakeLines {
-    fn skip(&self, line_num: Option<usize>, line_content: Option<&str>) -> bool;
+    fn skip(&self, line_num: usize, line_content: &str) -> bool;
     fn get_self_info(&self) -> String;
 }
 
@@ -8,11 +12,8 @@ pub struct SkipLinesFromStart {
     pub skip_num_lines: usize,
 }
 impl SkipTakeLines for SkipLinesFromStart {
-    fn skip(&self, line_num: Option<usize>, _line_content: Option<&str>) -> bool {
-        match line_num {
-            Some(ln) => ln <= self.skip_num_lines,
-            None => false,
-        }
+    fn skip(&self, line_num: usize, _line_content: &str) -> bool {
+        line_num <= self.skip_num_lines
     }
     fn get_self_info(&self) -> String {
         format!("{self:?}")
@@ -24,11 +25,8 @@ pub struct SkipLinesStartingWith {
     pub starts_with: String,
 }
 impl SkipTakeLines for SkipLinesStartingWith {
-    fn skip(&self, _line_num: Option<usize>, line_content: Option<&str>) -> bool {
-        match line_content {
-            Some(c) => c.starts_with(&self.starts_with),
-            None => false,
-        }
+    fn skip(&self, _line_num: usize, line_content: &str) -> bool {
+        line_content.starts_with(&self.starts_with)
     }
     fn get_self_info(&self) -> String {
         format!("{self:?}")
@@ -36,16 +34,22 @@ impl SkipTakeLines for SkipLinesStartingWith {
 }
 
 #[derive(Debug)]
-pub struct TakeLinesStartingWith {
-    pub starts_with: String,
+pub struct SkipLinesByRegex {
+    regex: Regex,
 }
-impl SkipTakeLines for TakeLinesStartingWith {
-    fn skip(&self, _line_num: Option<usize>, line_content: Option<&str>) -> bool {
-        match line_content {
-            Some(c) => !c.starts_with(&self.starts_with),
-            None => false,
-        }
+impl SkipLinesByRegex {
+    pub fn new(regex_pattern: &str) -> Result<Self> {
+        let re = Regex::new(regex_pattern).map_err(|e| {
+            PattiCsvError::ConfigError {msg: format!("[ERROR_ON_REGEX_COMPILE] Cannot create SkipLinesByRegex by given regex str={}. Error: {}", regex_pattern, e)}
+        })?;
+        Ok(Self { regex: re })
     }
+}
+impl SkipTakeLines for SkipLinesByRegex {
+    fn skip(&self, _line_num: usize, line_content: &str) -> bool {
+        self.regex.is_match(line_content)
+    }
+
     fn get_self_info(&self) -> String {
         format!("{self:?}")
     }
@@ -54,11 +58,8 @@ impl SkipTakeLines for TakeLinesStartingWith {
 #[derive(Debug)]
 pub struct SkipEmptyLines {}
 impl SkipTakeLines for SkipEmptyLines {
-    fn skip(&self, _line_num: Option<usize>, line_content: Option<&str>) -> bool {
-        match line_content {
-            Some(c) => c.eq("\n") || c.eq("\r\n"), // nothing there besides newline
-            None => false,
-        }
+    fn skip(&self, _line_num: usize, line_content: &str) -> bool {
+        line_content.eq("\n") || line_content.eq("\r\n") // nothing there besides newline
     }
     fn get_self_info(&self) -> String {
         format!("{self:?}")
@@ -75,9 +76,10 @@ mod tests {
             "# bullshit\n",
             "\n",
             "column1,column2,column3,column4,column5\n",
-            "\"SOMEDATA   \",1,10.12,\"true\",eur\n",
-            "\"SOMEDATA   \",2,10.12,\"true\",eur\n",
-            "\"SOMEDATA   \",3,10.12,\"true\",eur\n",
+            r###""SOMEDATA   ",1,10.12,"true",eur\n"###,
+            r###""SOMEDATA   ",2,10.12,"true",eur\n"###,
+            r###""SOMEDATA   ",3,10.12,"true",eur\n"###,
+            r###""","","","Totals:",5"###,
         ]
     }
 
@@ -87,11 +89,11 @@ mod tests {
         let to_skip = test_data_01()
             .iter()
             .enumerate()
-            .map(|(i, &s)| check_line.skip(Some(i + 1), Some(s)))
+            .map(|(i, &s)| check_line.skip(i + 1, s))
             .collect::<Vec<bool>>();
 
         assert_eq![
-            vec![true, false, false, false, false, false, false],
+            vec![true, false, false, false, false, false, false, false],
             to_skip
         ];
     }
@@ -105,27 +107,29 @@ mod tests {
         let to_skip = test_data_01()
             .iter()
             .enumerate()
-            .map(|(i, &s)| check_line.skip(Some(i + 1), Some(s)))
+            .map(|(i, &s)| check_line.skip(i + 1, s))
             .collect::<Vec<bool>>();
 
         assert_eq![
-            vec![false, true, false, false, false, false, false],
+            vec![false, true, false, false, false, false, false, false],
             to_skip
         ];
     }
 
     #[test]
-    fn take_lines_by_starts_with_hashbang() {
-        let check_line = TakeLinesStartingWith {
-            starts_with: "#".into(),
-        };
+    fn skip_lines_by_regex_empty_column_with_total() {
+        let check_line = SkipLinesByRegex::new(r###"^"","","","Totals:",.*"###).unwrap();
+
         let to_skip = test_data_01()
             .iter()
             .enumerate()
-            .map(|(i, &s)| check_line.skip(Some(i + 1), Some(s)))
+            .map(|(i, &s)| check_line.skip(i + 1, s))
             .collect::<Vec<bool>>();
 
-        assert_eq![vec![true, false, true, true, true, true, true], to_skip];
+        assert_eq![
+            vec![false, false, false, false, false, false, false, true],
+            to_skip
+        ];
     }
 
     #[test]
@@ -134,11 +138,11 @@ mod tests {
         let to_skip = test_data_01()
             .iter()
             .enumerate()
-            .map(|(i, &s)| check_line.skip(Some(i + 1), Some(s)))
+            .map(|(i, &s)| check_line.skip(i + 1, s))
             .collect::<Vec<bool>>();
 
         assert_eq![
-            vec![false, false, true, false, false, false, false],
+            vec![false, false, true, false, false, false, false, false],
             to_skip
         ];
     }

@@ -23,18 +23,18 @@ On the upper most level, a configuration consists of these objects:
 This is how the parser can be configured.
 
 ```jsonc
-"parserOpts": {                                     // 0) 
-    "comment": "Some explanation/documentation",    // 1) (optional)
-    "separatorChar": ",",                           // 2) (mandatory)
-    "enclosureChar": "\"",                          // 3) (optional)
-    "lines": {                                      //    (optional)
-        "comment": "Some optional explanation",     // 4) (optional)
-        "skipLinesFromStart": 3,                    // 5) (optional)
-        "skipLinesByStartswith": ["#", "-"],        // 6) (optional)
-        "takeLinesByStartswith": ["\""],            // 7) (optional)
-        "skipEmptyLines": true                      // 8) (optional)
+"parserOpts": {                                                     // 0) 
+    "comment": "Some explanation/documentation",                    // 1) (optional)
+    "separatorChar": ",",                                           // 2) (mandatory)
+    "enclosureChar": "\"",                                          // 3) (optional)
+    "lines": {                                                      //    (optional)
+        "comment": "Some optional explanation",                     // 4) (optional)
+        "skipLinesFromStart": 3,                                    // 5) (optional)
+        "skipLinesByStartswith": ["#", "-"],                        // 6) (optional)
+        "skipLinesByRegex": ["<stringly-regex>", "<another-one>"],  // 7) (optional)
+        "skipEmptyLines": true                                      // 8) (optional)
     },
-    "firstLineIsHeader": true                       // 10) (mandatory)
+    "firstLineIsHeader": true                                       // 9) (mandatory)
 },
 ```
 0. The `parserOpts` json object.
@@ -44,9 +44,9 @@ This is how the parser can be configured.
 4. A comment describing why it's configured the way it is.
 5. How many lines should be skipped from start of the file (1-indexed)
 6. Skip lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
-7. Only take lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
+7. Skips lines that **match** this regular expression. For syntax, see: https://docs.rs/regex/latest/regex/
 8. Skip empty lines
-9. Is the first line we read (**after** skipping/taking) a header line?
+9. Is the first line we read (**after** skipping) a header line?
 
 ## `sanitizeColumns` - Column Sanitization Configuration
 Some arguments can be found for and against having some transformation capabilities **in** the parser.
