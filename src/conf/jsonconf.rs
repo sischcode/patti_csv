@@ -78,7 +78,7 @@ pub enum SanitizeColumnOpts {
 #[serde(rename_all = "camelCase")]
 pub struct SanitizeColumnsEntry {
     pub comment: Option<String>,
-    pub idx: Option<usize>,
+    pub idxs: Option<Vec<usize>>,
     pub sanitizers: Vec<SanitizeColumnOpts>,
 }
 
@@ -397,14 +397,14 @@ mod tests {
                 }]
             }, {
                 "comment": "Some optional explanation",
-                "idx": 0,
+                "idxs": [0],
                 "sanitizers": [{
                     "type": "casing",
                     "spec": "toLower"
                 }]
             }, {
                 "comment": "Some optional explanation",
-                "idx": 1,
+                "idxs": [1],
                 "sanitizers": [{
                     "type": "casing",
                     "spec": "toUpper"
@@ -438,21 +438,21 @@ mod tests {
             sanitize_columns: Some(vec![
                 SanitizeColumnsEntry {
                     comment: Some(String::from("Some optional explanation")),
-                    idx: None,
+                    idxs: None,
                     sanitizers: vec![SanitizeColumnOpts::Trim {
                         spec: TrimOpts::All,
                     }],
                 },
                 SanitizeColumnsEntry {
                     comment: Some(String::from("Some optional explanation")),
-                    idx: Some(0 as usize),
+                    idxs: Some(vec![0_usize]),
                     sanitizers: vec![SanitizeColumnOpts::Casing {
                         spec: CasingOpts::ToLower,
                     }],
                 },
                 SanitizeColumnsEntry {
                     comment: Some(String::from("Some optional explanation")),
-                    idx: Some(1 as usize),
+                    idxs: Some(vec![1_usize]),
                     sanitizers: vec![SanitizeColumnOpts::Casing {
                         spec: CasingOpts::ToUpper,
                     }],

@@ -9,7 +9,7 @@ use crate::{
         DelimitedLineTokenizer, DelimitedLineTokenizerIter, DelimitedLineTokenizerStats,
     },
     parser_common::{build_layout_template, sanitize_tokenizer_iter_res},
-    parser_config::{TransformSanitizeTokens, TypeColumnEntry},
+    parser_config::{TypeColumnEntry, VecOfTokenTransitizers},
     skip_take_lines::SkipTakeLines,
 };
 
@@ -20,7 +20,7 @@ pub struct PattiCsvParser {
     // a) if the first Option is None, we simply don't have transitizers.
     // b) if the second Option is None, this means we have transitizers that apply to all columns,
     //    not just a specific one. (i.e. this is the "global" option. Everything is applied "globally")
-    column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_transitizers: Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
     column_typings: Vec<TypeColumnEntry>,
 }
 
@@ -42,7 +42,7 @@ pub struct PattiCsvParserBuilder {
     first_data_line_is_header: bool,
     skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
     save_skipped_lines: bool,
-    column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_transitizers: Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
     column_typings: Option<Vec<TypeColumnEntry>>,
 }
 
@@ -110,7 +110,7 @@ impl PattiCsvParserBuilder {
 
     pub fn column_transitizers(
         mut self,
-        t: HashMap<Option<usize>, TransformSanitizeTokens>,
+        t: HashMap<Option<usize>, VecOfTokenTransitizers>,
     ) -> PattiCsvParserBuilder {
         self.column_transitizers = Some(t);
         self
@@ -325,7 +325,7 @@ mod tests {
 
         #[test]
         fn test_iterating_parser_builder_all_opts() {
-            let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> =
+            let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> =
                 HashMap::with_capacity(2);
             transitizers.insert(None, vec![Box::new(ToLowercase)]);
             transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
@@ -420,7 +420,7 @@ mod tests {
     fn parse_with_custom_parser() {
         let mut test_data_cursor = std::io::Cursor::new("c1;c2;c3;c4;c5\n 1 ;'BaR';true;null;");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -534,7 +534,7 @@ mod tests {
 
         let mut test_data_cursor = std::io::Cursor::new("c1,c2,c3,c4,c5\n 1 ,\"BaR\",true,null,");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -638,7 +638,7 @@ mod tests {
         // <drop last line>
         let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -687,7 +687,7 @@ mod tests {
         // <drop last line>
         let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 

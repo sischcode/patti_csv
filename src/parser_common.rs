@@ -5,7 +5,7 @@ use venum_tds::data_cell_row::DataCellRow;
 
 use crate::errors::{PattiCsvError, Result, SanitizeError};
 
-use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
+use super::parser_config::{TypeColumnEntry, VecOfTokenTransitizers};
 
 pub fn build_layout_template(
     header_tokens: Option<&VecDeque<String>>,
@@ -52,7 +52,7 @@ pub fn build_layout_template(
 
 pub fn sanitize_token(
     token: String,
-    column_sanitizers: &HashMap<Option<usize>, TransformSanitizeTokens>,
+    column_sanitizers: &HashMap<Option<usize>, VecOfTokenTransitizers>,
     line_num: usize, // for error context
     col_num: usize,  // used internally AND for error context
 ) -> Result<String> {
@@ -113,7 +113,7 @@ pub fn sanitize_token(
 pub fn sanitize_tokenizer_iter_res(
     line_number: usize,
     line_tokens: VecDeque<String>,
-    column_transitizers: &Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_transitizers: &Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
 ) -> Result<VecDeque<String>> {
     match column_transitizers {
         None => Ok(line_tokens),
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_sanitize_token_global() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             None,
             vec![
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn test_sanitize_token_local() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             Some(0),
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
@@ -276,7 +276,7 @@ mod tests {
         expected = "Sanitize(SanitizeError { msg: \"No captures, but we need exactly one. Error in/from global sanitizer: RegexTake { regex: "
     )]
     fn test_sanitize_token_global_err() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             None,
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
@@ -290,7 +290,7 @@ mod tests {
         expected = "Sanitize(SanitizeError { msg: \"No captures, but we need exactly one. Error in/from local sanitizer: RegexTake { regex: "
     )]
     fn test_sanitize_token_local_err() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             Some(0),
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],

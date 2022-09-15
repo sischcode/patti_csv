@@ -4,15 +4,15 @@ use crate::{
     conf::jsonconf::{self, *},
     errors::{PattiCsvError, Result},
     iterating_parser::{PattiCsvParser, PattiCsvParserBuilder},
-    parser_config::{TransformSanitizeTokens, TypeColumnEntry},
+    parser_config::{TypeColumnEntry, VecOfTokenTransitizers},
     skip_take_lines::*,
     transform_sanitize_token::*,
 };
 
-impl TryFrom<&mut SanitizeColumnOpts> for TransformSanitizeTokens {
+impl TryFrom<&SanitizeColumnOpts> for VecOfTokenTransitizers {
     type Error = PattiCsvError;
 
-    fn try_from(entry_elem: &mut SanitizeColumnOpts) -> Result<TransformSanitizeTokens> {
+    fn try_from(entry_elem: &SanitizeColumnOpts) -> Result<VecOfTokenTransitizers> {
         match entry_elem {
             jsonconf::SanitizeColumnOpts::Trim { spec } => match spec {
                 TrimOpts::All => Ok(vec![Box::new(TrimAll)]),
@@ -26,23 +26,23 @@ impl TryFrom<&mut SanitizeColumnOpts> for TransformSanitizeTokens {
             },
 
             jsonconf::SanitizeColumnOpts::Eradicate { spec } => Ok(spec
-                .iter_mut()
+                .iter()
                 .map(|er| -> Box<dyn TransformSanitizeToken> {
                     Box::new(Eradicate {
-                        eradicate: std::mem::take(er),
+                        eradicate: er.clone(),
                     })
                 })
-                .collect::<TransformSanitizeTokens>()),
+                .collect::<VecOfTokenTransitizers>()),
 
             jsonconf::SanitizeColumnOpts::Replace { spec } => Ok(spec
-                .iter_mut()
+                .iter()
                 .map(|re| -> Box<dyn TransformSanitizeToken> {
                     Box::new(ReplaceWith {
-                        from: std::mem::take(&mut re.from),
-                        to: std::mem::take(&mut re.to),
+                        from: re.from.clone(),
+                        to: re.to.clone(),
                     })
                 })
-                .collect::<TransformSanitizeTokens>()),
+                .collect::<VecOfTokenTransitizers>()),
 
             jsonconf::SanitizeColumnOpts::RegexTake { spec } => {
                 let re = RegexTake::new(spec)?; // <--- this is why we do all this...
@@ -52,38 +52,42 @@ impl TryFrom<&mut SanitizeColumnOpts> for TransformSanitizeTokens {
     }
 }
 
-impl TryFrom<&mut SanitizeColumnsEntry> for (Option<usize>, TransformSanitizeTokens) {
-    type Error = PattiCsvError;
-
-    fn try_from(
-        entry: &mut SanitizeColumnsEntry,
-    ) -> Result<(Option<usize>, TransformSanitizeTokens)> {
-        let vec_tst = entry
+fn resolve_sanitize_columns_entry(
+    entry: &SanitizeColumnsEntry,
+) -> Result<Vec<(Option<usize>, VecOfTokenTransitizers)>> {
+    // inner resolve helper
+    fn mk_token_transitizers_for(entry: &SanitizeColumnsEntry) -> Result<VecOfTokenTransitizers> {
+        let tmp_accum: Result<VecOfTokenTransitizers> = Ok(Vec::new());
+        return entry
             .sanitizers
-            .iter_mut()
-            .map(|entry_elem| -> Result<TransformSanitizeTokens> { entry_elem.try_into() })
+            .iter()
+            .map(|san| -> Result<VecOfTokenTransitizers> { VecOfTokenTransitizers::try_from(san) })
             // I really didn't get how I needed to use flatten + collect in this context, so I did it manually, in the end.
             // Essentially we want this: [Result<TransformSanitizeTokens>, Result<TransformSanitizeTokens>, ...] -> Result<TransformSanitizeTokens>
             // However, this means the first error will always end up in the Err part of the Result.
-            .reduce(|acc, mut e| match acc {
-                Ok(mut acc_v) => match e {
-                    Ok(ref mut new_v) => {
-                        acc_v.append(new_v);
-                        Ok(acc_v)
+            .fold(tmp_accum, |acc, mut curr| match acc {
+                Ok(mut acc) => match curr {
+                    Ok(ref mut curr) => {
+                        acc.append(curr);
+                        Ok(acc)
                     }
                     Err(err) => Err(err), // if we have an error, pass it through...
                 },
                 Err(err) => Err(err), // if we had an error before, pass it through...
             });
+    }
 
-        // Reduce however wraps it in an Option, since the iterator could be empty. We need to get rid of this here.
-        // In our case, if that happens, we return an empty vec (for this index)
-        match vec_tst {
-            Some(v) => match v {
-                Err(err) => Err(err),
-                Ok(v) => Ok((entry.idx, v)),
-            },
-            None => Ok((entry.idx, Vec::<Box<dyn TransformSanitizeToken>>::new())),
+    if let Some(idxs) = &entry.idxs {
+        let mut res: Vec<(Option<usize>, VecOfTokenTransitizers)> = Vec::with_capacity(idxs.len());
+        for &i in idxs {
+            let r = mk_token_transitizers_for(entry)?;
+            res.push((Some(i), r));
+        }
+        Ok(res)
+    } else {
+        match mk_token_transitizers_for(entry) {
+            Ok(rt) => Ok(vec![(None, rt)]),
+            Err(e) => Err(e),
         }
     }
 }
@@ -129,16 +133,50 @@ impl TryFrom<ConfigRoot> for PattiCsvParser {
             .separator_char(cfg.parser_opts.separator_char)
             .first_data_line_is_header(cfg.parser_opts.first_line_is_header);
 
-        if let Some(mut san) = cfg.sanitize_columns {
-            let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> =
-                HashMap::with_capacity(san.len());
+        if let Some(vec_san_col_entry) = cfg.sanitize_columns {
+            let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> =
+                HashMap::with_capacity(vec_san_col_entry.len()); // only correct for idx(1)<-->sanitizer(1) relationships
 
-            san.iter_mut().try_for_each(|e| -> Result<()> {
-                let (opt_line_num, ts_tokens): (Option<usize>, TransformSanitizeTokens) =
-                    e.try_into()?;
-                transitizers.insert(opt_line_num, ts_tokens);
-                Ok(())
-            })?;
+            vec_san_col_entry
+                .iter()
+                .try_for_each(|san_col_entry| -> Result<()> {
+                    let sanitizers_for_columns = resolve_sanitize_columns_entry(san_col_entry)?;
+
+                    sanitizers_for_columns.into_iter().for_each(
+                        |(col_idx, mut new_transitizers)| {
+                            // This distinction is between the "global" (None) and local (Some()) sanitizers.
+                            match col_idx {
+                                // GLOBAL
+                                None => match transitizers.get_mut(&None) {
+                                    // ADD/INIT
+                                    None => {
+                                        transitizers.insert(None, new_transitizers);
+                                        ()
+                                    }
+                                    // APPEND
+                                    Some(ex_tr) => {
+                                        ex_tr.append(&mut new_transitizers);
+                                        ()
+                                    }
+                                },
+                                // LOCAL
+                                Some(idx) => match transitizers.get_mut(&Some(idx)) {
+                                    // ADD/INIT
+                                    None => {
+                                        transitizers.insert(Some(idx), new_transitizers);
+                                        ()
+                                    }
+                                    // APPEND
+                                    Some(ex_tr) => {
+                                        ex_tr.append(&mut new_transitizers);
+                                        ()
+                                    }
+                                },
+                            };
+                        },
+                    );
+                    Ok(())
+                })?;
 
             if !transitizers.is_empty() {
                 builder = builder.column_transitizers(transitizers);
@@ -195,28 +233,32 @@ mod tests {
 
     #[test]
     fn from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_trim_all() {
-        let mut sce = SanitizeColumnsEntry {
+        let sce = SanitizeColumnsEntry {
             comment: None,
-            idx: None,
+            idxs: None,
             sanitizers: vec![SanitizeColumnOpts::Trim {
                 spec: TrimOpts::All,
             }],
         };
-        let res_tuple: (Option<usize>, TransformSanitizeTokens) = (&mut sce).try_into().unwrap();
-        assert_eq!(None, res_tuple.0);
 
-        let exp: Vec<Box<dyn TransformSanitizeToken>> = vec![Box::new(TrimAll)];
+        let res = resolve_sanitize_columns_entry(&sce).unwrap();
+        assert_eq!(1, res.len());
+
+        let res_first = res.first().unwrap();
+        assert_eq!(None, res_first.0);
+
+        let exp: VecOfTokenTransitizers = vec![Box::new(TrimAll)];
         assert_eq!(
             exp.get(0).unwrap().get_info(),
-            res_tuple.1.get(0).unwrap().get_info()
+            res_first.1.get(0).unwrap().get_info()
         );
     }
 
     #[test]
     fn from_sanitize_column_entry_for_idx_and_trans_san_token_tuple_replace_with() {
-        let mut sce = SanitizeColumnsEntry {
+        let sce = SanitizeColumnsEntry {
             comment: None,
-            idx: Some(1),
+            idxs: Some(vec![1_usize]),
             sanitizers: vec![SanitizeColumnOpts::Replace {
                 spec: vec![ReplaceColumnSanitizerEntry {
                     from: String::from("foo"),
@@ -224,18 +266,21 @@ mod tests {
                 }],
             }],
         };
-        let res_tuple: (Option<usize>, TransformSanitizeTokens) = (&mut sce).try_into().unwrap();
-        assert_eq!(Some(1), res_tuple.0);
 
-        let exp: Vec<Box<dyn TransformSanitizeToken>> = vec![Box::new(ReplaceWith {
+        let res = resolve_sanitize_columns_entry(&sce).unwrap();
+        assert_eq!(1, res.len());
+
+        let res_first = res.first().unwrap();
+        assert_eq!(Some(1), res_first.0);
+
+        let exp: VecOfTokenTransitizers = vec![Box::new(ReplaceWith {
             from: String::from("foo"),
             to: String::from("bar"),
         })];
         assert_eq!(
             exp.get(0).unwrap().get_info(),
-            res_tuple.1.get(0).unwrap().get_info()
+            res_first.1.get(0).unwrap().get_info()
         );
-        // println!("{:}", res_tuple.1.get(0).unwrap().get_info());
     }
 
     #[test]
@@ -279,14 +324,14 @@ mod tests {
             sanitize_columns: Some(vec![
                 SanitizeColumnsEntry {
                     comment: None,
-                    idx: None,
+                    idxs: None,
                     sanitizers: vec![SanitizeColumnOpts::Trim {
                         spec: TrimOpts::All,
                     }],
                 },
                 SanitizeColumnsEntry {
                     comment: None,
-                    idx: Some(0 as usize),
+                    idxs: Some(vec![0_usize]),
                     sanitizers: vec![SanitizeColumnOpts::Casing {
                         spec: CasingOpts::ToLower,
                     }],
