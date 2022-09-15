@@ -390,7 +390,7 @@ mod tests {
                 "firstLineIsHeader": true
             },
             "sanitizeColumns": [{
-                "comment": "Some optional explanation",
+                "comment": "(GLOBAL, all columns) Some optional explanation",
                 "sanitizers": [{
                     "type": "trim",
                     "spec": "all"
@@ -437,7 +437,9 @@ mod tests {
             },
             sanitize_columns: Some(vec![
                 SanitizeColumnsEntry {
-                    comment: Some(String::from("Some optional explanation")),
+                    comment: Some(String::from(
+                        "(GLOBAL, all columns) Some optional explanation",
+                    )),
                     idxs: None,
                     sanitizers: vec![SanitizeColumnOpts::Trim {
                         spec: TrimOpts::All,
