@@ -5,7 +5,7 @@ use venum_tds::data_cell_row::DataCellRow;
 
 use crate::errors::{PattiCsvError, Result, SanitizeError};
 
-use super::parser_config::{TransformSanitizeTokens, TypeColumnEntry};
+use super::parser_config::{TypeColumnEntry, VecOfTokenTransitizers};
 
 pub fn build_layout_template(
     header_tokens: Option<&VecDeque<String>>,
@@ -50,14 +50,15 @@ pub fn build_layout_template(
     Ok(csv_cell_templ_row)
 }
 
-pub fn sanitize_token(
-    token: String,
-    column_sanitizers: &HashMap<Option<usize>, TransformSanitizeTokens>,
+pub fn sanitize_token<T: Into<String>>(
+    token: T,
+    column_sanitizers: &HashMap<Option<usize>, VecOfTokenTransitizers>,
     line_num: usize, // for error context
     col_num: usize,  // used internally AND for error context
 ) -> Result<String> {
     // If we have sanitizers for index=None, that means, we have global sanitizers, not bound to any index. I.e. they will always be applied.
     // Note that this strongly differs from getting None as a result of a .get on the HashMap!
+    let token = token.into();
     let token = match column_sanitizers.get(&None) {
         Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
             transitizer
@@ -69,7 +70,7 @@ pub fn sanitize_token(
                             se,
                             Some(format!(
                                 " Error in/from global sanitizer: {}.",
-                                &transitizer.get_info()
+                                &transitizer.get_self_info()
                             )),
                             Some(line_num),
                             None,
@@ -97,7 +98,7 @@ pub fn sanitize_token(
                             se,
                             Some(format!(
                                 " Error in/from local sanitizer: {}.",
-                                &transitizer.get_info(),
+                                &transitizer.get_self_info(),
                             )),
                             Some(line_num),
                             Some(col_num),
@@ -113,7 +114,7 @@ pub fn sanitize_token(
 pub fn sanitize_tokenizer_iter_res(
     line_number: usize,
     line_tokens: VecDeque<String>,
-    column_transitizers: &Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_transitizers: &Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
 ) -> Result<VecDeque<String>> {
     match column_transitizers {
         None => Ok(line_tokens),
@@ -242,32 +243,29 @@ mod tests {
 
     #[test]
     fn test_sanitize_token_global() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             None,
             vec![
                 Box::new(TrimTrailing),
-                Box::new(ReplaceWith {
-                    from: String::from("o"),
-                    to: String::from("u"),
-                }),
+                Box::new(ReplaceWith::new("o", "u")),
                 Box::new(ToUppercase),
             ],
         );
 
-        let res = sanitize_token(String::from("foobar   "), &san_hm, 112, 3).unwrap();
+        let res = sanitize_token("foobar   ", &san_hm, 112, 3).unwrap();
         assert_eq!(String::from("FUUBAR"), res);
     }
 
     #[test]
     fn test_sanitize_token_local() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             Some(0),
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        let res = sanitize_token(String::from("10.00 (CHF)"), &san_hm, 112, 0).unwrap();
+        let res = sanitize_token("10.00 (CHF)", &san_hm, 112, 0).unwrap();
         assert_eq!(String::from("10.00"), res);
     }
 
@@ -276,13 +274,13 @@ mod tests {
         expected = "Sanitize(SanitizeError { msg: \"No captures, but we need exactly one. Error in/from global sanitizer: RegexTake { regex: "
     )]
     fn test_sanitize_token_global_err() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             None,
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        sanitize_token(String::from("10 (CHF)"), &san_hm, 112, 3).unwrap();
+        sanitize_token("10 (CHF)", &san_hm, 112, 3).unwrap();
     }
 
     #[test]
@@ -290,12 +288,12 @@ mod tests {
         expected = "Sanitize(SanitizeError { msg: \"No captures, but we need exactly one. Error in/from local sanitizer: RegexTake { regex: "
     )]
     fn test_sanitize_token_local_err() {
-        let mut san_hm: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::with_capacity(1);
+        let mut san_hm: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::with_capacity(1);
         san_hm.insert(
             Some(0),
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        sanitize_token(String::from("10 (CHF)"), &san_hm, 112, 0).unwrap();
+        sanitize_token("10 (CHF)", &san_hm, 112, 0).unwrap();
     }
 }

@@ -1098,12 +1098,8 @@ fn bench_patti_parse_iter_skip_footer_and_header_by_starswith_no_transform_strin
             .stringly_type_columns(22)
             .first_data_line_is_header(false)
             .skip_take_lines_fns(vec![
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("#"),
-                }),
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from(",,,,,Totals:"),
-                }),
+                Box::new(SkipLinesStartingWith::new("#")),
+                Box::new(SkipLinesStartingWith::new(",,,,,Totals:")),
             ])
             .build()
             .unwrap();

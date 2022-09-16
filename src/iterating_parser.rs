@@ -9,7 +9,7 @@ use crate::{
         DelimitedLineTokenizer, DelimitedLineTokenizerIter, DelimitedLineTokenizerStats,
     },
     parser_common::{build_layout_template, sanitize_tokenizer_iter_res},
-    parser_config::{TransformSanitizeTokens, TypeColumnEntry},
+    parser_config::{TypeColumnEntry, VecOfTokenTransitizers},
     skip_take_lines::SkipTakeLines,
 };
 
@@ -20,7 +20,7 @@ pub struct PattiCsvParser {
     // a) if the first Option is None, we simply don't have transitizers.
     // b) if the second Option is None, this means we have transitizers that apply to all columns,
     //    not just a specific one. (i.e. this is the "global" option. Everything is applied "globally")
-    column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_transitizers: Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
     column_typings: Vec<TypeColumnEntry>,
 }
 
@@ -32,7 +32,7 @@ impl PattiCsvParser {
         &'pars self,
         data: &'rd mut R,
     ) -> PattiCsvParserIterator<'pars, 'rd, R> {
-        PattiCsvParserIterator::new(&self, self.dlt.tokenize_iter(data))
+        PattiCsvParserIterator::new(self, self.dlt.tokenize_iter(data))
     }
 }
 
@@ -42,7 +42,7 @@ pub struct PattiCsvParserBuilder {
     first_data_line_is_header: bool,
     skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
     save_skipped_lines: bool,
-    column_transitizers: Option<HashMap<Option<usize>, TransformSanitizeTokens>>,
+    column_transitizers: Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
     column_typings: Option<Vec<TypeColumnEntry>>,
 }
 
@@ -110,7 +110,7 @@ impl PattiCsvParserBuilder {
 
     pub fn column_transitizers(
         mut self,
-        t: HashMap<Option<usize>, TransformSanitizeTokens>,
+        t: HashMap<Option<usize>, VecOfTokenTransitizers>,
     ) -> PattiCsvParserBuilder {
         self.column_transitizers = Some(t);
         self
@@ -137,7 +137,7 @@ impl PattiCsvParserBuilder {
                 msg: String::from("mandatory 'column typings' are not set! (None)"),
             });
         }
-        if self.column_typings.is_some() && self.column_typings.as_ref().unwrap().len() == 0 {
+        if self.column_typings.is_some() && self.column_typings.as_ref().unwrap().is_empty() {
             return Err(PattiCsvError::Generic {
                 msg: String::from("mandatory 'column typings' are not set! (Empty vec)"),
             });
@@ -180,7 +180,7 @@ impl<'pars, 'rd, R: Read> PattiCsvParserIterator<'pars, 'rd, R> {
         }
     }
     pub fn get_stats(&self) -> &DelimitedLineTokenizerStats {
-        &self.dlt_iter.get_stats()
+        self.dlt_iter.get_stats()
     }
 }
 
@@ -325,7 +325,7 @@ mod tests {
 
         #[test]
         fn test_iterating_parser_builder_all_opts() {
-            let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> =
+            let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> =
                 HashMap::with_capacity(2);
             transitizers.insert(None, vec![Box::new(ToLowercase)]);
             transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
@@ -334,9 +334,7 @@ mod tests {
                 .separator_char(';')
                 .enclosure_char(Some('\''))
                 .first_data_line_is_header(false)
-                .skip_take_lines_fns(vec![Box::new(SkipLinesStartingWith {
-                    starts_with: "".into(),
-                })])
+                .skip_take_lines_fns(vec![Box::new(SkipLinesStartingWith::new(""))])
                 .save_skipped_lines(true)
                 .column_typings(vec![
                     TypeColumnEntry::new(None, ValueType::Int32),
@@ -420,7 +418,7 @@ mod tests {
     fn parse_with_custom_parser() {
         let mut test_data_cursor = std::io::Cursor::new("c1;c2;c3;c4;c5\n 1 ;'BaR';true;null;");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -534,7 +532,7 @@ mod tests {
 
         let mut test_data_cursor = std::io::Cursor::new("c1,c2,c3,c4,c5\n 1 ,\"BaR\",true,null,");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -638,7 +636,7 @@ mod tests {
         // <drop last line>
         let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -646,12 +644,8 @@ mod tests {
             .first_data_line_is_header(true)
             .stringly_type_columns(4)
             .skip_take_lines_fns(vec![
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("#"),
-                }),
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("a, shitty"),
-                }),
+                Box::new(SkipLinesStartingWith::new("#")),
+                Box::new(SkipLinesStartingWith::new("a, shitty")),
             ])
             .column_transitizers(transitizers)
             .build()
@@ -687,7 +681,7 @@ mod tests {
         // <drop last line>
         let mut test_data_cursor = std::io::Cursor::new("# shitty comment line!\n# shitty comment line 2\nc1,c2,c3,c4\n 1 ,\"BaR\",true,\na, shitty, summation, line");
 
-        let mut transitizers: HashMap<Option<usize>, TransformSanitizeTokens> = HashMap::new();
+        let mut transitizers: HashMap<Option<usize>, VecOfTokenTransitizers> = HashMap::new();
         transitizers.insert(None, vec![Box::new(ToLowercase)]);
         transitizers.insert(Some(0), vec![Box::new(TrimAll)]);
 
@@ -695,12 +689,8 @@ mod tests {
             .first_data_line_is_header(true)
             .stringly_type_columns(4)
             .skip_take_lines_fns(vec![
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("#"),
-                }),
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("a, shitty"),
-                }),
+                Box::new(SkipLinesStartingWith::new("#")),
+                Box::new(SkipLinesStartingWith::new("a, shitty")),
             ])
             .save_skipped_lines(true)
             .column_transitizers(transitizers)
