@@ -1,103 +1,153 @@
 use regex::Regex;
+use std::fmt::Debug;
 
 use crate::errors::{PattiCsvError, Result, SanitizeError};
 
-pub trait TransformSanitizeToken {
+pub trait TransformSanitizeToken: Debug {
     fn transitize(&self, input_token: &str) -> Result<String>;
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         String::from("n/a")
     }
 }
 
 #[derive(Debug)]
 pub struct ReplaceWith {
-    pub from: String,
-    pub to: String,
+    from: String,
+    to: String,
+}
+impl ReplaceWith {
+    pub fn new<T>(from: T, to: T) -> Self
+    where
+        T: Into<String> + Debug,
+    {
+        Self {
+            from: from.into(),
+            to: to.into(),
+        }
+    }
 }
 impl TransformSanitizeToken for ReplaceWith {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.replace(self.from.as_str(), self.to.as_str()))
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct Eradicate {
-    pub eradicate: String,
+    eradicate: String,
+}
+impl Eradicate {
+    pub fn new<T>(eradicate: T) -> Self
+    where
+        T: Into<String> + Debug,
+    {
+        Self {
+            eradicate: eradicate.into(),
+        }
+    }
 }
 impl TransformSanitizeToken for Eradicate {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.replace(self.eradicate.as_str(), ""))
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct ToLowercase;
+impl ToLowercase {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 impl TransformSanitizeToken for ToLowercase {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.to_lowercase())
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct ToUppercase;
+impl ToUppercase {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 impl TransformSanitizeToken for ToUppercase {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.to_uppercase())
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct TrimLeading;
+impl TrimLeading {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 impl TransformSanitizeToken for TrimLeading {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.trim_start().into())
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct TrimTrailing;
+impl TrimTrailing {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 impl TransformSanitizeToken for TrimTrailing {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.trim_end().into())
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct TrimAll;
+impl TrimAll {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 impl TransformSanitizeToken for TrimAll {
     fn transitize(&self, input_token: &str) -> Result<String> {
         Ok(input_token.trim().into())
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
 
 #[derive(Debug)]
 pub struct RegexTake {
-    pub regex: Regex,
+    regex: Regex,
 }
 impl RegexTake {
-    pub fn new(regex_pattern: &str) -> Result<Self> {
-        let re = Regex::new(regex_pattern).map_err(|e| {
+    pub fn new<T>(regex_pattern: T) -> Result<Self>
+    where
+        T: AsRef<str> + Debug,
+    {
+        let re = Regex::new(regex_pattern.as_ref()).map_err(|e| {
             PattiCsvError::Sanitize(SanitizeError::minim(
                 format!("{}", e),
                 "ERROR_ON_REGEX_COMPILE".into(),
@@ -124,7 +174,7 @@ impl TransformSanitizeToken for RegexTake {
 
         Ok(String::from(token_match.as_str()))
     }
-    fn get_info(&self) -> String {
+    fn get_self_info(&self) -> String {
         format!("{:?}", self)
     }
 }
@@ -171,11 +221,7 @@ mod tests {
     fn test_replace_with_oneinstance() {
         assert_eq!(
             Ok("foobar".into()),
-            ReplaceWith {
-                from: "baz".into(),
-                to: "bar".into()
-            }
-            .transitize("foobaz".into())
+            ReplaceWith::new("baz", "bar").transitize("foobaz".into())
         );
     }
 
@@ -183,11 +229,7 @@ mod tests {
     fn test_replace_with_allinstances() {
         assert_eq!(
             Ok("barfoobar".into()),
-            ReplaceWith {
-                from: "baz".into(),
-                to: "bar".into()
-            }
-            .transitize("bazfoobaz".into())
+            ReplaceWith::new("baz", "bar").transitize("bazfoobaz".into())
         );
     }
 
@@ -195,10 +237,7 @@ mod tests {
     fn test_eradicate_with_oneinstance() {
         assert_eq!(
             Ok("foo".into()),
-            Eradicate {
-                eradicate: "baz".into()
-            }
-            .transitize("foobaz".into())
+            Eradicate::new("baz").transitize("foobaz".into())
         );
     }
 
@@ -206,10 +245,7 @@ mod tests {
     fn test_eradicate_with_allinstances() {
         assert_eq!(
             Ok("foo".into()),
-            Eradicate {
-                eradicate: "baz".into()
-            }
-            .transitize("bazfoobaz".into())
+            Eradicate::new("baz").transitize("bazfoobaz".into())
         );
     }
 
@@ -225,7 +261,7 @@ mod tests {
     fn test_to_uppercase() {
         assert_eq!(
             Ok("FOOBAR".into()),
-            ToUppercase {}.transitize("FoObAr".into())
+            ToUppercase::new().transitize("FoObAr".into())
         );
     }
 
@@ -233,7 +269,7 @@ mod tests {
     fn test_trim_leading() {
         assert_eq!(
             Ok("foobar".into()),
-            TrimLeading {}.transitize("  foobar".into())
+            TrimLeading::new().transitize("  foobar".into())
         );
     }
 
@@ -241,7 +277,7 @@ mod tests {
     fn test_trim_trailing() {
         assert_eq!(
             Ok("foobar".into()),
-            TrimTrailing {}.transitize("foobar  ".into())
+            TrimTrailing::new().transitize("foobar  ".into())
         );
     }
 
@@ -249,7 +285,7 @@ mod tests {
     fn test_trim() {
         assert_eq!(
             Ok("foobar".into()),
-            TrimAll {}.transitize("  foobar  ".into())
+            TrimAll::new().transitize("  foobar  ".into())
         );
     }
 }

@@ -50,14 +50,15 @@ pub fn build_layout_template(
     Ok(csv_cell_templ_row)
 }
 
-pub fn sanitize_token(
-    token: String,
+pub fn sanitize_token<T: Into<String>>(
+    token: T,
     column_sanitizers: &HashMap<Option<usize>, VecOfTokenTransitizers>,
     line_num: usize, // for error context
     col_num: usize,  // used internally AND for error context
 ) -> Result<String> {
     // If we have sanitizers for index=None, that means, we have global sanitizers, not bound to any index. I.e. they will always be applied.
     // Note that this strongly differs from getting None as a result of a .get on the HashMap!
+    let token = token.into();
     let token = match column_sanitizers.get(&None) {
         Some(tst) => tst.iter().try_fold(token, |acc, transitizer| {
             transitizer
@@ -69,7 +70,7 @@ pub fn sanitize_token(
                             se,
                             Some(format!(
                                 " Error in/from global sanitizer: {}.",
-                                &transitizer.get_info()
+                                &transitizer.get_self_info()
                             )),
                             Some(line_num),
                             None,
@@ -97,7 +98,7 @@ pub fn sanitize_token(
                             se,
                             Some(format!(
                                 " Error in/from local sanitizer: {}.",
-                                &transitizer.get_info(),
+                                &transitizer.get_self_info(),
                             )),
                             Some(line_num),
                             Some(col_num),
@@ -247,15 +248,12 @@ mod tests {
             None,
             vec![
                 Box::new(TrimTrailing),
-                Box::new(ReplaceWith {
-                    from: String::from("o"),
-                    to: String::from("u"),
-                }),
+                Box::new(ReplaceWith::new("o", "u")),
                 Box::new(ToUppercase),
             ],
         );
 
-        let res = sanitize_token(String::from("foobar   "), &san_hm, 112, 3).unwrap();
+        let res = sanitize_token("foobar   ", &san_hm, 112, 3).unwrap();
         assert_eq!(String::from("FUUBAR"), res);
     }
 
@@ -267,7 +265,7 @@ mod tests {
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        let res = sanitize_token(String::from("10.00 (CHF)"), &san_hm, 112, 0).unwrap();
+        let res = sanitize_token("10.00 (CHF)", &san_hm, 112, 0).unwrap();
         assert_eq!(String::from("10.00"), res);
     }
 
@@ -282,7 +280,7 @@ mod tests {
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        sanitize_token(String::from("10 (CHF)"), &san_hm, 112, 3).unwrap();
+        sanitize_token("10 (CHF)", &san_hm, 112, 3).unwrap();
     }
 
     #[test]
@@ -296,6 +294,6 @@ mod tests {
             vec![Box::new(RegexTake::new("(\\d+\\.\\d+).*").unwrap())],
         );
 
-        sanitize_token(String::from("10 (CHF)"), &san_hm, 112, 0).unwrap();
+        sanitize_token("10 (CHF)", &san_hm, 112, 0).unwrap();
     }
 }

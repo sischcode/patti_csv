@@ -90,7 +90,7 @@ impl DelimitedLineTokenizer {
         DelimitedLineTokenizerIter::new(self, data)
     }
 
-    fn skip_line_by_skiptake_sanitizer(&self, line_counter: usize, line: &String) -> bool {
+    fn skip_line_by_skiptake_sanitizer(&self, line_counter: usize, line: &str) -> bool {
         // If we have filters, we apply them and see if we need to skip this line.
         if let Some(ref skip_take_lines) = self.skip_take_lines_fns {
             skip_take_lines

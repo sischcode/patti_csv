@@ -20,15 +20,18 @@ impl TypeColumnEntry {
         }
     }
 
-    pub fn new_with_chrono_pattern(
+    pub fn new_with_chrono_pattern<T>(
         header: Option<String>,
         target_type: ValueType,
-        chrono_pattern: String,
-    ) -> Self {
+        chrono_pattern: T,
+    ) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
             header,
             target_type,
-            chrono_pattern: Some(chrono_pattern),
+            chrono_pattern: Some(chrono_pattern.into()),
             map_to_none: None,
         }
     }
@@ -36,7 +39,7 @@ impl TypeColumnEntry {
     pub fn new_with_map_to_none(
         header: Option<String>,
         target_type: ValueType,
-        map_to_none: Vec<String>,
+        map_to_none: Vec<String>, // TODO -> &[String]
     ) -> Self {
         Self {
             header,
@@ -46,16 +49,19 @@ impl TypeColumnEntry {
         }
     }
 
-    pub fn new_with_chrono_pattern_with_map_to_none(
+    pub fn new_with_chrono_pattern_with_map_to_none<T>(
         header: Option<String>,
         target_type: ValueType,
-        chrono_pattern: String,
+        chrono_pattern: T,
         map_to_none: Vec<String>,
-    ) -> Self {
+    ) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
             header,
             target_type,
-            chrono_pattern: Some(chrono_pattern),
+            chrono_pattern: Some(chrono_pattern.into()),
             map_to_none: Some(map_to_none),
         }
     }

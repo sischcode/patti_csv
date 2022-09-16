@@ -70,7 +70,7 @@ Column sanitization, from a json standpoint, is an array of "sanitizers" for **e
     }]
 }, {
     "comment": "Some explanation",
-    "idx": 0,                       // 5) (optional)
+    "idxs": [0,1,2],                // 5) (optional)
     "sanitizers": [{
         "type": "casing",
         "spec": "toLower"
@@ -82,6 +82,7 @@ Column sanitization, from a json standpoint, is an array of "sanitizers" for **e
 2. The array holding the actual, individual, sanitizer configuration. **NOTE**. We do _not_ have column index configured here. Meaning it is a global configuration that will be applied to _all_ columns.
 3. The sanitization type. In this example a _trim_ operation.
 4. The specification for this type. In this example _left_. Meaning a left trim operation.
+5. The indexes these Sanitizers are applied on. If this is omitted, the sanitizers will be applied globally, i.e. on all columns/indexes. (**NOTE**: This will currently create a new sanitizer for every index and sanitizer config. Meaning 3 indexes and 2 sanitizer configs, will result in 6 sanitizers internally.)
 
 ### `trim` sanitizer
 
@@ -160,15 +161,20 @@ Note that we do not need to specify column indices here. This configuration reli
 In essence every line of the config performs a String->Type transformation.
 ```jsonc
 {   
-    "typeColumns": [{               // 1) 
-        "comment": "column-0",      // 2) (optional)
-        "header": "Header-1",       // 3) (optional)
-        "targetType": "Char"        // 4) (mandatory)
+    "typeColumns": [{                           // 1) 
+        "comment": "column-0",                  // 2) (optional)
+        "header": "Header-1",                   // 3) (optional)
+        "targetType": "Char"                    // 4) (mandatory)
     },{
-        "comment": "column-1",      // 2) (optional)
-        "header": "Header-2",       // 3) (optional)
-        "targetType": "DateTime",   // 4) (mandatory)
-        "srcPattern": "%FT%T%:z"    // 5) (optional)
+        "comment": "column-1",                  
+        "header": "Header-2",                   
+        "targetType": "DateTime",               
+        "srcPattern": "%FT%T%:z"                // 5) (optional)
+    },{
+        "comment": "column-2",                  
+        "header": "Header-3",                   
+        "targetType": "String",                 
+        "mapToNone": ["null", "NULL", "n/a"]    // 6) (optional)
     }]
 }
 ```
@@ -180,6 +186,7 @@ In essence every line of the config performs a String->Type transformation.
     1. For `NaiveDate` we expect a format like `2022-12-31`, i.e. ISO8601 format (i.e. the chrono pattern _`%Y-%m-%d`_)
     2. For `NaiveDateTime` we expect a format like `2022-12-31T10:20:30` or `2022-12-31T10:20:30.500`, i.e. the chrono pattern _`%Y-%m-%dT%H:%M:%S`_  _`%Y-%m-%dT%H:%M:%S%.3f`_, respectivly.
     2. For `DateTime` we expect a format like `2022-12-31T10:20:30.500+02:00`, i.e. RFC3339 format
+6. An optional array of "stringly tokens" (token values) that should be mapped to Value::None internally.
 
 ### Data Types
 The following data types are supported.

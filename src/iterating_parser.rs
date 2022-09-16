@@ -32,7 +32,7 @@ impl PattiCsvParser {
         &'pars self,
         data: &'rd mut R,
     ) -> PattiCsvParserIterator<'pars, 'rd, R> {
-        PattiCsvParserIterator::new(&self, self.dlt.tokenize_iter(data))
+        PattiCsvParserIterator::new(self, self.dlt.tokenize_iter(data))
     }
 }
 
@@ -137,7 +137,7 @@ impl PattiCsvParserBuilder {
                 msg: String::from("mandatory 'column typings' are not set! (None)"),
             });
         }
-        if self.column_typings.is_some() && self.column_typings.as_ref().unwrap().len() == 0 {
+        if self.column_typings.is_some() && self.column_typings.as_ref().unwrap().is_empty() {
             return Err(PattiCsvError::Generic {
                 msg: String::from("mandatory 'column typings' are not set! (Empty vec)"),
             });
@@ -180,7 +180,7 @@ impl<'pars, 'rd, R: Read> PattiCsvParserIterator<'pars, 'rd, R> {
         }
     }
     pub fn get_stats(&self) -> &DelimitedLineTokenizerStats {
-        &self.dlt_iter.get_stats()
+        self.dlt_iter.get_stats()
     }
 }
 
@@ -334,9 +334,7 @@ mod tests {
                 .separator_char(';')
                 .enclosure_char(Some('\''))
                 .first_data_line_is_header(false)
-                .skip_take_lines_fns(vec![Box::new(SkipLinesStartingWith {
-                    starts_with: "".into(),
-                })])
+                .skip_take_lines_fns(vec![Box::new(SkipLinesStartingWith::new(""))])
                 .save_skipped_lines(true)
                 .column_typings(vec![
                     TypeColumnEntry::new(None, ValueType::Int32),
@@ -646,12 +644,8 @@ mod tests {
             .first_data_line_is_header(true)
             .stringly_type_columns(4)
             .skip_take_lines_fns(vec![
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("#"),
-                }),
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("a, shitty"),
-                }),
+                Box::new(SkipLinesStartingWith::new("#")),
+                Box::new(SkipLinesStartingWith::new("a, shitty")),
             ])
             .column_transitizers(transitizers)
             .build()
@@ -695,12 +689,8 @@ mod tests {
             .first_data_line_is_header(true)
             .stringly_type_columns(4)
             .skip_take_lines_fns(vec![
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("#"),
-                }),
-                Box::new(SkipLinesStartingWith {
-                    starts_with: String::from("a, shitty"),
-                }),
+                Box::new(SkipLinesStartingWith::new("#")),
+                Box::new(SkipLinesStartingWith::new("a, shitty")),
             ])
             .save_skipped_lines(true)
             .column_transitizers(transitizers)
