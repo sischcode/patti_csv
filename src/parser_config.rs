@@ -67,4 +67,4 @@ impl TypeColumnEntry {
     }
 }
 
-pub type VecOfTokenTransitizers = Vec<Box<dyn TransformSanitizeToken>>;
+pub type VecOfTokenTransitizers = Vec<Box<dyn TransformSanitizeToken + Send + Sync>>;

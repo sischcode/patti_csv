@@ -13,6 +13,7 @@ use crate::{
     skip_take_lines::SkipTakeLines,
 };
 
+#[derive(Debug)]
 pub struct PattiCsvParser {
     pub first_data_line_is_header: bool,
     dlt: DelimitedLineTokenizer,
@@ -40,7 +41,7 @@ pub struct PattiCsvParserBuilder {
     separator_char: Option<char>,
     enclosure_char: Option<char>,
     first_data_line_is_header: bool,
-    skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
+    skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines + Send + Sync>>>,
     save_skipped_lines: bool,
     column_transitizers: Option<HashMap<Option<usize>, VecOfTokenTransitizers>>,
     column_typings: Option<Vec<TypeColumnEntry>>,
@@ -98,7 +99,10 @@ impl PattiCsvParserBuilder {
         self
     }
 
-    pub fn skip_take_lines_fns(mut self, s: Vec<Box<dyn SkipTakeLines>>) -> PattiCsvParserBuilder {
+    pub fn skip_take_lines_fns(
+        mut self,
+        s: Vec<Box<dyn SkipTakeLines + Send + Sync>>,
+    ) -> PattiCsvParserBuilder {
         self.skip_take_lines_fns = Some(s);
         self
     }

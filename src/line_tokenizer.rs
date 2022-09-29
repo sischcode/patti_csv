@@ -45,19 +45,20 @@ enum State {
     QuoteInQuotedField, // we need this to do proper escape checking of the enclosure character
 }
 
+#[derive(Debug)]
 pub struct DelimitedLineTokenizer {
     max_inline_str_size: usize, // helper for compact string. This is the max that can get stack allocated. CompactString::with_capacity(0) does actually exactly this we well.
     save_skipped_lines: bool,
     pub delim_char: char,
     pub encl_char: Option<char>,
-    pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>, // needed here to skip lines while iterating
+    pub skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines + Send + Sync>>>, // needed here to skip lines while iterating
 }
 
 impl DelimitedLineTokenizer {
     pub fn new(
         delim: char,
         enclc: Option<char>,
-        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
+        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines + Send + Sync>>>,
         save_skipped_lines: bool,
     ) -> Self {
         DelimitedLineTokenizer {
@@ -70,14 +71,14 @@ impl DelimitedLineTokenizer {
     }
 
     pub fn csv(
-        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
+        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines + Send + Sync>>>,
         save_skipped_lines: bool,
     ) -> Self {
         DelimitedLineTokenizer::new(',', Some('"'), skip_take_lines_fns, save_skipped_lines)
     }
 
     pub fn tsv(
-        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines>>>,
+        skip_take_lines_fns: Option<Vec<Box<dyn SkipTakeLines + Send + Sync>>>,
         save_skipped_lines: bool,
     ) -> Self {
         DelimitedLineTokenizer::new('\t', None, skip_take_lines_fns, save_skipped_lines)
