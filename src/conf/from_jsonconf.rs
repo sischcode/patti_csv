@@ -26,12 +26,14 @@ fn resolve_sanitize_column_opts_entry(
 
         jsonconf::SanitizeColumnOpts::Eradicate { spec } => Ok(spec
             .iter()
-            .map(|er| -> Box<dyn TransformSanitizeToken> { Box::new(Eradicate::new(er)) })
+            .map(|er| -> Box<dyn TransformSanitizeToken + Send + Sync> {
+                Box::new(Eradicate::new(er))
+            })
             .collect::<VecOfTokenTransitizers>()),
 
         jsonconf::SanitizeColumnOpts::Replace { spec } => Ok(spec
             .iter()
-            .map(|re| -> Box<dyn TransformSanitizeToken> {
+            .map(|re| -> Box<dyn TransformSanitizeToken + Send + Sync> {
                 Box::new(ReplaceWith::new(&re.from, &re.to))
             })
             .collect::<VecOfTokenTransitizers>()),
@@ -177,7 +179,7 @@ impl TryFrom<ConfigRoot> for PattiCsvParser {
         }
 
         if let Some(skip_take_lines_cfg) = &cfg.parser_opts.lines {
-            let mut skip_take_lines: Vec<Box<dyn SkipTakeLines>> = Vec::new();
+            let mut skip_take_lines: Vec<Box<dyn SkipTakeLines + Send + Sync>> = Vec::new();
 
             if let Some(true) = skip_take_lines_cfg.skip_empty_lines {
                 skip_take_lines.push(Box::new(SkipEmptyLines {}));
