@@ -1047,7 +1047,9 @@ fn bench_tokenizer_tokenize_iter(c: &mut Criterion) {
         // assert_eq!(1000, dlt_iter.get_stats().num_lines_tokenized)
     }
 
-    c.bench_function("tokenizer_iter_tokenize_benchmark", |b| b.iter(|| test()));
+    c.bench_function("tokenizer_iter_tokenize_benchmark_1k_lines", |b| {
+        b.iter(|| test())
+    });
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

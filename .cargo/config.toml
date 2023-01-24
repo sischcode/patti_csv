@@ -2,7 +2,7 @@
 [profile.dev]
 opt-level = 0
 debug = true
-split-debuginfo = '...'  # Platform-specific.
+# split-debuginfo = 'off'  # Platform-specific. (`off`, `packed`, or `unpacked`) https://doc.rust-lang.org/rustc/codegen-options/index.html#split-debuginfo
 debug-assertions = true
 overflow-checks = true
 lto = false
