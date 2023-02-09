@@ -13,13 +13,14 @@ On the upper most level, a configuration consists of these objects:
 }
 
 ```
+
 1. An optional comment / description of this configuration.
 2. The **parser options**.
 3. The **column sanitization configuration**, i.e. clean up the file to be usable
 4. The **column typing configuration** / setup, i.e. we type the columns
 
-
 ## `parserOpts` - Parser Options
+
 This is how the parser can be configured.
 
 ```jsonc
@@ -37,6 +38,7 @@ This is how the parser can be configured.
     "firstLineIsHeader": true                                       // 9) (mandatory)
 },
 ```
+
 0. The `parserOpts` json object.
 1. A comment describing why it's configured the way it is.
 2. The separator character used.
@@ -44,11 +46,12 @@ This is how the parser can be configured.
 4. A comment describing why it's configured the way it is.
 5. How many lines should be skipped from start of the file (1-indexed)
 6. Skip lines that start with these strings (or characters). **NOTE: only one of either(`skipLinesByStartswith`|`takeLinesByStartswith`) makes sense to use.**
-7. Skips lines that **match** this regular expression. For syntax, see: https://docs.rs/regex/latest/regex/
+7. Skips lines that **match** this regular expression. For syntax, see: <https://docs.rs/regex/latest/regex/>
 8. Skip empty lines
 9. Is the first line we read (**after** skipping) a header line?
 
 ## `sanitizeColumns` - Column Sanitization Configuration
+
 Some arguments can be found for and against having some transformation capabilities **in** the parser.
 
 On the plus side, some sanitization is often required, in order to correctly type everything in the **column typing"** step. In other words, there is just enough sanitization (or transformation, really) provided to clean up the token strings, so that they can be typed.
@@ -57,7 +60,7 @@ Also, because of this, a downstream transformation step might not be needed.
 
 On the down side, arguably, things can be done with this that are not traditionally the job of a parser, but rather the downstream processing.
 
-Column sanitization, from a json standpoint, is an array of "sanitizers" for **every** column. **Column indexing is 0-based!**
+Column sanitization, from a json standpoint, is an array of "sanitizers" for **every** column. **Column indexing is 0-based!** (NOTE: line/row indexing is 1-based!)
 
 **CAUTION**: The correcteness of the config is **not** checked at this point! It is totally possible to build faulty configurations!
 
@@ -77,6 +80,7 @@ Column sanitization, from a json standpoint, is an array of "sanitizers" for **e
     }]
 }
 ```
+
 0. The `sanitizeColumns` array, holding the sanitizer configs as json objects. Each sanitizer config can have many sanitizers.
 1. An optional comment on "column" basis.
 2. The array holding the actual, individual, sanitizer configuration. **NOTE**. We do _not_ have column index configured here. Meaning it is a global configuration that will be applied to _all_ columns.
@@ -92,52 +96,63 @@ Column sanitization, from a json standpoint, is an array of "sanitizers" for **e
     "spec": "left"  // 2) (mandatory) (example)
 }
 ```
+
 1. The type (name) of sanitizer to use. `trim` in this case.
 2. The specification. I.e. which trim mode to use. Available are:
    1. `all` Removes leading and trailing whitespace
    2. `leading` Removes leading whitespace
    3. `trailing` Removes trailing whitespace
 
-
 ### `casing` sanitizer
+
 Changes the casing for the complete string, depending on the `spec` attribute.
+
 ```jsonc
 {   
     "type": "casing",   // 1) (mandatory)
     "spec": "toUpper"   // 2) (mandatory)  (example)
 }
 ```
+
 1. The type (name) of sanitizer to use. `casing` in this case.
 2. The specification. I.e. which casing mode to use. Available are:
    1. `toLower` Lowercases the complete string.
    2. `toUpper` Uppercases the complete string.
 
 ### `eradicate` sanitizer
+
 Eradicates a certain sub-string or sub-strings.
+
 ```jsonc
 {   
     "type": "eradicate",    // 1) (mandatory)
     "spec": [" USD", ","]   // 2) (mandatory)  (example)
 }
 ```
+
 1. The type (name) of sanitizer to use. `eradicate` in this case.
 2. The specification. In this case an array of strings to be eradicated. E.g a value of "1,000.00 USD" would become "1000.00".
 
 ### `regexTake` sanitizer
+
 Takes a value, specified by the regular expression capture. **The first capture is what will be taken as the value.**
+
 ```jsonc
 {   
     "type": "regexTake",        // 1) (mandatory)
     "spec": "(\\d+\\.\\d+)\\D*" // 2) (mandatory)
 }
 ```
+
 1. The type (name) of sanitizer to use. `regexTake` in this case.
 2. The specification. In this the regex pattern to use. E.g. a value of "1000.00 (USD)" would become "1000.00".
 
 ### `replace` sanitizer
+
 Replace a string with another string.
 
 The spec allows for an array of replacements.
+
 ```jsonc
 {   
     "type": "replace",  // 1) (mandatory)
@@ -150,15 +165,17 @@ The spec allows for an array of replacements.
     }]
 }
 ```
+
 1. The type (name) of sanitizer to use. `regexTake` in this case.
 2. The specification. In this example, a value of "USD_1,000.00" would become "$ 1,000.00".
 
-
 ## `typeColumns` - Column Typing Configuration
+
 After all the sanitization we can finally type our columns!
 Note that we do not need to specify column indices here. This configuration relies on the order of the elements in the array, since we have to type all columns anyway! (**NOTE**: if `typeColumns` is omitted, everything is implicitly typed as `String`.)
 
 In essence every line of the config performs a String->Type transformation.
+
 ```jsonc
 {   
     "typeColumns": [{                           // 1) 
@@ -178,6 +195,7 @@ In essence every line of the config performs a String->Type transformation.
     }]
 }
 ```
+
 1. The array that holds the config. Every entry is the type configuration for one column.
 2. A comment
 3. The (new / final) header name.
@@ -185,10 +203,11 @@ In essence every line of the config performs a String->Type transformation.
 5. An optional (chrono based, see: yyy) pattern used for String->DateType parsing. If no `srcPattern` is provided, the following applies:
     1. For `NaiveDate` we expect a format like `2022-12-31`, i.e. ISO8601 format (i.e. the chrono pattern _`%Y-%m-%d`_)
     2. For `NaiveDateTime` we expect a format like `2022-12-31T10:20:30` or `2022-12-31T10:20:30.500`, i.e. the chrono pattern _`%Y-%m-%dT%H:%M:%S`_  _`%Y-%m-%dT%H:%M:%S%.3f`_, respectivly.
-    2. For `DateTime` we expect a format like `2022-12-31T10:20:30.500+02:00`, i.e. RFC3339 format
-6. An optional array of "stringly tokens" (token values) that should be mapped to Value::None internally.
+    3. For `DateTime` we expect a format like `2022-12-31T10:20:30.500+02:00`, i.e. RFC3339 format
+6. An optional array of "stringly tokens" (token values) that should be mapped to `Value::None` internally.
 
 ### Data Types
+
 The following data types are supported.
 
 * `Char`, `String`
@@ -199,8 +218,8 @@ The following data types are supported.
 * `Decimal` (*)
 * `NaiveDate`, `NaiveDateTime`, `DateTime` (**)
 
-(see also: https://doc.rust-lang.org/book/ch03-02-data-types.html)
+(see also: <https://doc.rust-lang.org/book/ch03-02-data-types.html>)
 
-(*) = through the `rust_decimal` crate. See: https://docs.rs/rust_decimal/latest/rust_decimal/
+(*) = through the `rust_decimal` crate. See: <https://docs.rs/rust_decimal/latest/rust_decimal/>
 
-(**) = through the `chrono` crate. See: https://docs.rs/chrono/latest/chrono/
+(**) = through the `chrono` crate. See: <https://docs.rs/chrono/latest/chrono/>
