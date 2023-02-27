@@ -7,6 +7,11 @@ use std::{
 use super::errors::{PattiCsvError, Result, TokenizerError};
 use super::skip_take_lines::SkipTakeLines;
 
+// = UTF-8-BOM = EF BB BF = 239, 187, 191 as uint8 = UCS character U+FEFF "ZERO WIDTH NO-BREAK SPACE"
+// see https://www.rfc-editor.org/rfc/rfc3629#page-6
+// see https://philbooth.gitlab.io/unicode-bom/unicode_bom/
+const UTF8BOM: [u8; 3] = [239, 187, 191];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelimitedLineTokenizerStats {
     pub curr_line_num: usize,       // needed for internal state while iterating
@@ -245,6 +250,12 @@ impl<'dlt, 'rd, R: Read> Iterator for DelimitedLineTokenizerIter<'dlt, 'rd, R> {
                     return Some(Err(PattiCsvError::Generic { msg }));
                 }
             };
+
+            // Check very first line, if a BOM (UTF-8-BOM) is present and if so, remove it.
+            if self.stats.curr_line_num == 1 && line.as_bytes().starts_with(&UTF8BOM) {
+                line.remove(0); // we remove the char(!) that consists of these 3 bytes, not the bytes!
+            }
+
             self.stats.num_lines_read += 1;
             self.stats.bytes_read += bytes_read.unwrap(); // unwrap is OK here, we checked every other path
 
@@ -309,6 +320,17 @@ mod tests {
         let res2 = dlt_iter2.next().unwrap().unwrap();
 
         assert_eq!(res2, exp);
+    }
+
+    #[test]
+    fn find_skip_utf8_bom() {
+        // <UTF8BOM>hello,world
+        // 239, 187, 191 = utf8-bom
+        let man = [
+            239, 187, 191, 104, 101, 108, 108, 111, 44, 119, 111, 114, 108, 100,
+        ];
+        let s = std::str::from_utf8(&man).unwrap();
+        test_it(s, vec!["hello", "world"]);
     }
 
     #[test]

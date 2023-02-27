@@ -1,6 +1,6 @@
 [package]
 name = "patti_csv"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Jörg Sischka <sischcode@gmx.net>"]
 readme = "README.md"
 keywords = ["rust", "venum", "csv", "parsing", "transformation", "enrichment", "manipulation"]
